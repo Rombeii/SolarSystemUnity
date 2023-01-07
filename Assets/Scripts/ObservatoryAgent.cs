@@ -145,12 +145,18 @@ public class ObservatoryAgent : Agent
     {
         float reward = 0;
         List<int> indices = GetRandomNumber(0, _problem.GeneratedPositions.Count, sampleSize);
+        DateTime dateObserved;
         for (int index = 0; index < indices.Count; index++)
         {
             List<String> distinctPlanetsSeen = new List<string>();
             SetPlanetsToPosition(_problem.GeneratedPositions[indices[index]]);
+            dateObserved = _problem.GeneratedPositions[indices[index]][0].ObservationDate;
             foreach (var observatory in _problem.Observatories)
             {
+                if (SunInformationUtil.IsSunUp(observatory.Latitude, observatory.Latitude, dateObserved))
+                {
+                    break;
+                }
                 List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
                     observatory.Angle);
                 distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));

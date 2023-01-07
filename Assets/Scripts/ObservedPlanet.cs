@@ -64,5 +64,11 @@ namespace DefaultNamespace
             get => _importance;
             set => _importance = value;
         }
+
+        public DateTime ObservationDate
+        {
+            get => _observationDate;
+            set => _observationDate = value;
+        }
     }
 }
