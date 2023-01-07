@@ -153,7 +153,7 @@ public class ObservatoryAgent : Agent
             dateObserved = _problem.GeneratedPositions[indices[index]][0].ObservationDate;
             foreach (var observatory in _problem.Observatories)
             {
-                if (SunInformationUtil.IsSunUp(observatory.Latitude, observatory.Latitude, dateObserved))
+                if (SunInformationUtil.IsSunUp(observatory.Latitude, observatory.Longitude, dateObserved))
                 {
                     break;
                 }
