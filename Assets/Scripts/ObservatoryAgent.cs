@@ -20,7 +20,7 @@ public class ObservatoryAgent : Agent
     public override void Initialize()
     {
         _earthRadius = PlanetUtil.planetSizes["earth"] / 2;
-        _problem = GeneratedPositionUtil.getProblemFromCsv();
+        _problem = GeneratedPositionUtil.GETProblemFromCsv();
         InitializePlanetDict();
         InitializeHeatmaps();
 
@@ -33,8 +33,8 @@ public class ObservatoryAgent : Agent
         {
             GameObject newPlanet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             newPlanet.transform.parent = transform;
-            newPlanet.transform.name = _problem.GeneratedPositions[0][i].name;
-            _planets.Add(_problem.GeneratedPositions[0][i].name, newPlanet);
+            newPlanet.transform.name = _problem.GeneratedPositions[0][i].Name;
+            _planets.Add(_problem.GeneratedPositions[0][i].Name, newPlanet);
         }
     }
 
@@ -162,11 +162,11 @@ public class ObservatoryAgent : Agent
         return reward;
     }
     
-    private void SetPlanetsToPosition(List<Planet> positions)
+    private void SetPlanetsToPosition(List<ObservedPlanet> positions)
     {
         foreach (var position in positions)
         {
-            _planets[position.name].transform.position = new Vector3(position.x, position.y, position.z);
+            _planets[position.Name].transform.position = new Vector3(position.X, position.Y, position.Z);
         }
     }
 
@@ -181,21 +181,21 @@ public class ObservatoryAgent : Agent
         return numbers.ToList();
     }
     
-    private List<String> GetAllPlanetsInCone(Observatory observatory, List<Planet> positions, int maxAngle)
+    private List<String> GetAllPlanetsInCone(Observatory observatory, List<ObservedPlanet> positions, int maxAngle)
     {
         Vector3 from = observatory.Location;
         List<String> planetsHit = new List<string>();
 
         foreach (var generatedPosition in positions)
         {
-            if (generatedPosition.importance != 0 && 
-                IsPointInsideCone(from, generatedPosition.getVector(), -from, maxAngle))
+            if (generatedPosition.Importance != 0 && 
+                IsPointInsideCone(from, generatedPosition.GETPosition(), -from, maxAngle))
             {
                 RaycastHit hit;
-                if (!Physics.Linecast(from, generatedPosition.getVector(), out hit)
-                    || generatedPosition.name.Equals(hit.collider.name))
+                if (!Physics.Linecast(from, generatedPosition.GETPosition(), out hit)
+                    || generatedPosition.Name.Equals(hit.collider.name))
                 {
-                    planetsHit.Add(generatedPosition.name);
+                    planetsHit.Add(generatedPosition.Name);
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -8,18 +9,18 @@ namespace DefaultNamespace
     {
         private static Problem problem = new Problem();
         
-        public static Problem getProblemFromCsv()
+        public static Problem GETProblemFromCsv()
         {
             if (problem.Observatories.Count == 0)
             {
-                getGeneratedPositionsFromCsv();
+                GETGeneratedPositionsFromCsv();
             }
 
             return problem;
         }
         
         
-        private static void getGeneratedPositionsFromCsv()
+        private static void GETGeneratedPositionsFromCsv()
         {
             using(var reader = new StreamReader(Application.dataPath + "/Resources/planetPositions.csv"))
             {
@@ -28,7 +29,7 @@ namespace DefaultNamespace
                 List<float> importances = new List<float>();
                 while (!reader.EndOfStream)
                 {
-                    List<Planet> positionsForTheDay = new List<Planet>();
+                    List<ObservedPlanet> positionsForTheDay = new List<ObservedPlanet>();
                     var line = reader.ReadLine();
                     var values = line.Split(';');
                     if (lineNumber == 0)
@@ -52,10 +53,15 @@ namespace DefaultNamespace
                     }
                     else
                     {
-                        for (int i = 0; i < values.Length; i++)
+                        string[] dateTimeValues = values[0].Split('-');
+                        DateTime dateTime = new DateTime(int.Parse(dateTimeValues[0]), int.Parse(dateTimeValues[1]),
+                            int.Parse(dateTimeValues[2]), int.Parse(dateTimeValues[3]), int.Parse(dateTimeValues[4]),
+                            int.Parse(dateTimeValues[5]));
+                        for (int i = 1; i < values.Length; i++)
                         {
-                            positionsForTheDay.Add(generatePlanetFromCell(values[i].Split('/'),
-                                diameters[i], i.ToString(), importances[i]));
+                            int planetIndex = i - 1;
+                            positionsForTheDay.Add(GenerateObservedPlanetFromCell(values[i].Split('/'),
+                                diameters[planetIndex], i.ToString(), importances[planetIndex], dateTime));
                         }
                     
                         problem.GeneratedPositions.Add(positionsForTheDay);
@@ -65,12 +71,14 @@ namespace DefaultNamespace
             }
         }
 
-        private static Planet generatePlanetFromCell(string[] position, float diameter, string name, float importance)
+        private static ObservedPlanet GenerateObservedPlanetFromCell(string[] position, float diameter, string name,
+            float importance, DateTime observationDate)
         {
-            return new Planet(name,
+            return new ObservedPlanet(name,
                 float.Parse(position[0].Trim().Replace('.', ',')),
                 float.Parse(position[1].Trim().Replace('.', ',')),
-                float.Parse(position[2].Trim().Replace('.', ',')), diameter, importance);
+                float.Parse(position[2].Trim().Replace('.', ',')), diameter, importance,
+                observationDate);
         }
     }
 }
