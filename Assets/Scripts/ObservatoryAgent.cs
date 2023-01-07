@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using DefaultNamespace;
 using Unity.MLAgents;
@@ -14,12 +15,14 @@ public class ObservatoryAgent : Agent
     private Problem _problem;
     private float _earthRadius;
     private int _previousSampleSize;
+    private List<HeatmapWrapper> _terminateHeatmaps;
 
     public override void Initialize()
     {
         _earthRadius = PlanetUtil.planetSizes["earth"] / 2;
         _problem = GeneratedPositionUtil.getProblemFromCsv();
         InitializePlanetDict();
+        InitializeHeatmaps();
 
         ResetScene();
     }
@@ -32,6 +35,17 @@ public class ObservatoryAgent : Agent
             newPlanet.transform.parent = transform;
             newPlanet.transform.name = _problem.GeneratedPositions[0][i].name;
             _planets.Add(_problem.GeneratedPositions[0][i].name, newPlanet);
+        }
+    }
+
+    private void InitializeHeatmaps()
+    {
+        _terminateHeatmaps = new List<HeatmapWrapper>();
+        DirectoryInfo directoryInfo = new DirectoryInfo(Application.dataPath + "/Resources/TerminateHeatmap/");
+        FileInfo[] files = directoryInfo.GetFiles("*.png");
+        foreach (var file in files)
+        {
+            _terminateHeatmaps.Add(new HeatmapWrapper(file.FullName));
         }
     }
     
@@ -54,6 +68,13 @@ public class ObservatoryAgent : Agent
         float action2 = actions.ContinuousActions[1];
         float latitude = mapBetweenValues(-1, 1, -90, 90, action1);
         float longitude = mapBetweenValues(-1, 1, -180, 180, action2);
+        foreach (var terminateHeatmap in _terminateHeatmaps)
+        {
+            if (terminateHeatmap.ShouldTerminateBasedOnGrayScale(latitude, longitude))
+            {
+                EndEpisode();
+            }
+        }
         _problem.turnOnNextObservatory(LatLongToXYZ(latitude, longitude), latitude, longitude, action1, action2);
         if (_problem.areAllObservatoriesOn())
         {
