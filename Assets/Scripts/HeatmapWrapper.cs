@@ -15,9 +15,6 @@ namespace DefaultNamespace
                 byte[] fileData = File.ReadAllBytes(path);
                 tex = new Texture2D(2, 2);
                 tex.LoadImage(fileData);
-                tex.Apply();
-                byte[] png = tex.EncodeToPNG();
-                File.WriteAllBytes("D:/SolarSystemGit/Unity/Assets/Resources/TerminateHeatmap/watertest.png", png);
             }
         }
 
