@@ -111,7 +111,7 @@ public class ObservatoryAgent : Agent
         float sigma_max = 40f;
         float T0 = 5;
         float alpha = 0.99997f;
-        float eps = 0.0000009f;
+        float eps = 0.00009f;
         float sigma_max_pow = (float) Math.Pow(sigma_max, 2);
 
         float numerator = N * sigma_max_pow;
