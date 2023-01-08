@@ -96,7 +96,6 @@ public class ObservatoryAgent : Agent
         {
             if (terminateHeatmap.ShouldTerminateBasedOnGrayScale(latitude, longitude))
             {
-                EndEpisode();
                 terminated = true;
                 break;
             }
@@ -118,6 +117,10 @@ public class ObservatoryAgent : Agent
                 _previousSampleSize = sampleSize;
                 EndEpisode();
             }
+        }
+        else
+        {
+            EndEpisode();
         }
     }
     
