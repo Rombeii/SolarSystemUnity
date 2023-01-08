@@ -16,6 +16,8 @@ public class ObservatoryAgent : Agent
     private float _earthRadius;
     private int _previousSampleSize;
     private List<HeatmapWrapper> _terminateHeatmaps;
+    private List<HeatmapWrapper> _yearlyRewardHeatmaps;
+    private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
 
     public override void Initialize()
     {
@@ -41,11 +43,32 @@ public class ObservatoryAgent : Agent
     private void InitializeHeatmaps()
     {
         _terminateHeatmaps = new List<HeatmapWrapper>();
-        DirectoryInfo directoryInfo = new DirectoryInfo(Application.dataPath + "/Resources/TerminateHeatmap/");
-        FileInfo[] files = directoryInfo.GetFiles("*.png");
-        foreach (var file in files)
+        DirectoryInfo terminateDirectory = new DirectoryInfo(Application.dataPath + "/Resources/TerminateHeatmap/");
+        FileInfo[] terminateFiles = terminateDirectory.GetFiles("*.png");
+        foreach (var file in terminateFiles)
         {
             _terminateHeatmaps.Add(new HeatmapWrapper(file.FullName));
+        }
+        
+        _yearlyRewardHeatmaps = new List<HeatmapWrapper>();
+        DirectoryInfo yearlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Yearly");
+        FileInfo[] yearlyRewardFiles = yearlyRewardDirectory.GetFiles("*.png");
+        foreach (var file in yearlyRewardFiles)
+        {
+            _yearlyRewardHeatmaps.Add(new HeatmapWrapper(file.FullName));
+        }
+
+        _monthlyRewardHeatmaps = new Dictionary<int, List<HeatmapWrapper>>();
+        for (int i = 1; i <= 12; i++)
+        {
+            DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Yearly");
+            FileInfo[] monthlyRewardFiles = monthlyRewardDirectory.GetFiles("*.png");
+            List<HeatmapWrapper> monthlyHeatmaps = new List<HeatmapWrapper>();
+            foreach (var file in monthlyRewardFiles)
+            {
+                monthlyHeatmaps.Add(new HeatmapWrapper(file.FullName));
+            }
+            _monthlyRewardHeatmaps.Add(i, monthlyHeatmaps);
         }
     }
     
@@ -66,8 +89,8 @@ public class ObservatoryAgent : Agent
     {
         float action1 = actions.ContinuousActions[0];
         float action2 = actions.ContinuousActions[1];
-        float latitude = mapBetweenValues(-1, 1, -90, 90, action1);
-        float longitude = mapBetweenValues(-1, 1, -180, 180, action2);
+        float latitude = MathUtil.MapBetweenValues(-1, 1, -90, 90, action1);
+        float longitude = MathUtil.MapBetweenValues(-1, 1, -180, 180, action2);
         foreach (var terminateHeatmap in _terminateHeatmaps)
         {
             if (terminateHeatmap.ShouldTerminateBasedOnGrayScale(latitude, longitude))
@@ -75,50 +98,20 @@ public class ObservatoryAgent : Agent
                 EndEpisode();
             }
         }
-        _problem.turnOnNextObservatory(LatLongToXYZ(latitude, longitude), latitude, longitude, action1, action2);
+        _problem.turnOnNextObservatory(MathUtil.LatLongToXYZ(latitude, longitude, _earthRadius),
+            latitude, longitude, action1, action2);
         if (_problem.areAllObservatoriesOn())
         {
             int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
                 ? _previousSampleSize
-                : CalculateSampleSize(CompletedEpisodes);
-            // float reward = CalculateReward() / problem.GeneratedPositions.Count / problem.getMaxPoints();
+                : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
+            // float reward = CalculateReward() / _problem.GeneratedPositions.Count / _problem.getMaxPoints();
             float reward = CalculateReward(sampleSize) / sampleSize / _problem.getMaxPoints();
-            // AddReward(problem.GeneratedPositions.Count, reward);
+            // AddReward(_problem.GeneratedPositions.Count, reward);
             AddReward(sampleSize, reward);
             _previousSampleSize = sampleSize;
             EndEpisode();
         }
-    }
-
-    private float mapBetweenValues(float fromMin, float fromMax, float toMin, float toMax, float value)
-    {
-        float t = Mathf.InverseLerp(fromMin, fromMax, value);
-        return Mathf.Lerp(toMin, toMax, t);
-    }
-    
-    //lat -> -90 --- 90
-    //long -> -180 --- 180
-    private Vector3 LatLongToXYZ(float latitude, float longitude)
-    {
-        return Quaternion.AngleAxis(longitude, -Vector3.up)
-               * Quaternion.AngleAxis(latitude, -Vector3.right)
-               * new Vector3(0,0,_earthRadius);
-    }
-
-    private int CalculateSampleSize(int k)
-    {
-        float N = _problem.GeneratedPositions.Count;
-        float sigma_max = 40f;
-        float T0 = 5;
-        float alpha = 0.99997f;
-        float eps = 0.00009f;
-        float sigma_max_pow = (float) Math.Pow(sigma_max, 2);
-
-        float numerator = N * sigma_max_pow;
-        float sigma_k = T0 * (float) Math.Pow(alpha, k) * (float) Math.Pow(1 - eps, k);
-        float denominator = (N - 1) * (float) Math.Pow(sigma_k, 2) + sigma_max_pow;
-
-        return (int)(Math.Ceiling(numerator / denominator) + 0.5);
     }
     
     private float CalculateReward()
@@ -145,18 +138,12 @@ public class ObservatoryAgent : Agent
     {
         float reward = 0;
         List<int> indices = GetRandomNumber(0, _problem.GeneratedPositions.Count, sampleSize);
-        DateTime dateObserved;
         for (int index = 0; index < indices.Count; index++)
         {
             List<String> distinctPlanetsSeen = new List<string>();
             SetPlanetsToPosition(_problem.GeneratedPositions[indices[index]]);
-            dateObserved = _problem.GeneratedPositions[indices[index]][0].ObservationDate;
             foreach (var observatory in _problem.Observatories)
             {
-                if (SunInformationUtil.IsSunUp(observatory.Latitude, observatory.Longitude, dateObserved))
-                {
-                    break;
-                }
                 List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
                     observatory.Angle);
                 distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
@@ -247,15 +234,4 @@ public class ObservatoryAgent : Agent
         ResetScene();
         base.OnEpisodeBegin();
     }
-
-    
-    public static Vector2 XYZtoLatLong(Vector3 position, float sphereRadius){
-        float lat = Mathf.Acos(position.y / sphereRadius); //theta
-        float lon = Mathf.Atan2(position.x, position.z); //phi
-        lat *= Mathf.Rad2Deg;
-        lon *= Mathf.Rad2Deg;
-        return new Vector2(lat, lon);
-    }
-
-   
 }

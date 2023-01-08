@@ -32,10 +32,8 @@ namespace DefaultNamespace
 
         private Color GETPixelAt(float latitude, float longitude)
         {
-            var x = (longitude + 180f) / 360f * tex.width;
-            var y = tex.height / 2f - latitude * tex.height / 180f;
-            //Texture coordinates start at lower left corner.
-            y = tex.height - y;
+            var x = MathUtil.MapBetweenValues(-180f, 180f, 0f, tex.width, longitude);
+            var y = MathUtil.MapBetweenValues(-90f, 90f, 0f, tex.height, latitude);
             return tex.GetPixel((int) x, (int) y);
         }
     }

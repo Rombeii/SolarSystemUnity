@@ -1,83 +1,99 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace DefaultNamespace
 {
     public class Observatory
     {
-        private Vector3 location;
-        private bool isUsed;
-        private int angle;
-        private float latitude;
-        private float latitudeAction;
-        private float longitude;
-        private float longitudeAction;
+        private Vector3 _location;
+        private bool _isUsed;
+        private int _angle;
+        private float _latitude;
+        private float _latitudeAction;
+        private float _longitude;
+        private float _longitudeAction;
+        private float _yearlyRewardMultiplier;
+        private Dictionary<int, float> _monthlyRewardMultiplier;
 
         public Observatory(int angle)
         {
-            this.angle = angle;
-            this.location = Vector3.zero;
-            this.isUsed = false;
+            _angle = angle;
+            _location = Vector3.zero;
+            _isUsed = false;
+            _yearlyRewardMultiplier = 1;
+            _monthlyRewardMultiplier = new Dictionary<int, float>();
+            resetMonthlyRewardMultiplier();
         }
 
         public void turnOn(Vector3 location, float latitude, float longitude, float latitudeAction,
             float longitudeAction)
         {
-            this.location = location;
-            this.isUsed = true;
-            this.latitude = latitude;
-            this.longitude = longitude;
-            this.latitudeAction = latitudeAction;
-            this.longitudeAction = longitudeAction;
+            _location = location;
+            _isUsed = true;
+            _latitude = latitude;
+            _longitude = longitude;
+            _latitudeAction = latitudeAction;
+            _longitudeAction = longitudeAction;
         }
 
         public void Reset()
         {
-            this.location = Vector3.zero;
-            this.isUsed = false;
-            this.latitude = 0;
-            this.longitude = 0;
+            _location = Vector3.zero;
+            _isUsed = false;
+            _latitude = 0;
+            _longitude = 0;
+            _yearlyRewardMultiplier = 1;
+            resetMonthlyRewardMultiplier();
+        }
+
+        private void resetMonthlyRewardMultiplier()
+        {
+            for (int i = 1; i <= 12; i++)
+            {
+                _monthlyRewardMultiplier[i] = 1;
+            }
         }
 
         public bool IsUsed
         {
-            get => isUsed;
-            set => isUsed = value;
+            get => _isUsed;
+            set => _isUsed = value;
         }
 
         public float Latitude
         {
-            get => latitude;
-            set => latitude = value;
+            get => _latitude;
+            set => _latitude = value;
         }
 
         public float Longitude
         {
-            get => longitude;
-            set => longitude = value;
+            get => _longitude;
+            set => _longitude = value;
         }
 
         public Vector3 Location
         {
-            get => location;
-            set => location = value;
+            get => _location;
+            set => _location = value;
         }
 
         public int Angle
         {
-            get => angle;
-            set => angle = value;
+            get => _angle;
+            set => _angle = value;
         }
         
         public float LongitudeAction
         {
-            get => longitudeAction;
-            set => longitudeAction = value;
+            get => _longitudeAction;
+            set => _longitudeAction = value;
         }
 
         public float LatitudeAction
         {
-            get => latitudeAction;
-            set => latitudeAction = value;
+            get => _latitudeAction;
+            set => _latitudeAction = value;
         }
     }
 }
