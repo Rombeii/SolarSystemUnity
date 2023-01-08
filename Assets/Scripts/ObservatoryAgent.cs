@@ -91,26 +91,33 @@ public class ObservatoryAgent : Agent
         float action2 = actions.ContinuousActions[1];
         float latitude = MathUtil.MapBetweenValues(-1, 1, -90, 90, action1);
         float longitude = MathUtil.MapBetweenValues(-1, 1, -180, 180, action2);
+        bool terminated = false;
         foreach (var terminateHeatmap in _terminateHeatmaps)
         {
             if (terminateHeatmap.ShouldTerminateBasedOnGrayScale(latitude, longitude))
             {
                 EndEpisode();
+                terminated = true;
+                break;
             }
         }
-        _problem.turnOnNextObservatory(MathUtil.LatLongToXYZ(latitude, longitude, _earthRadius),
-            latitude, longitude, action1, action2);
-        if (_problem.areAllObservatoriesOn())
+
+        if (!terminated)
         {
-            int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
-                ? _previousSampleSize
-                : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
-            // float reward = CalculateReward() / _problem.GeneratedPositions.Count / _problem.getMaxPoints();
-            float reward = CalculateReward(sampleSize) / sampleSize / _problem.getMaxPoints();
-            // AddReward(_problem.GeneratedPositions.Count, reward);
-            AddReward(sampleSize, reward);
-            _previousSampleSize = sampleSize;
-            EndEpisode();
+            _problem.turnOnNextObservatory(MathUtil.LatLongToXYZ(latitude, longitude, _earthRadius),
+                latitude, longitude, action1, action2);
+            if (_problem.areAllObservatoriesOn())
+            {
+                int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
+                    ? _previousSampleSize
+                    : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
+                // float reward = CalculateReward() / _problem.GeneratedPositions.Count / _problem.getMaxPoints();
+                float reward = CalculateReward(sampleSize) / sampleSize / _problem.getMaxPoints();
+                // AddReward(_problem.GeneratedPositions.Count, reward);
+                AddReward(sampleSize, reward);
+                _previousSampleSize = sampleSize;
+                EndEpisode();
+            }
         }
     }
     
