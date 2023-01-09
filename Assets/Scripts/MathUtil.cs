@@ -11,23 +11,6 @@ namespace DefaultNamespace
             return Mathf.Lerp(toMin, toMax, t);
         }
         
-        //lat -> -90 --- 90
-        //long -> -180 --- 180
-        public static Vector3 LatLongToXYZ(float latitude, float longitude, float radius)
-        {
-            return Quaternion.AngleAxis(longitude, -Vector3.up)
-                   * Quaternion.AngleAxis(latitude, -Vector3.right)
-                   * new Vector3(0,0,radius);
-        }
-        
-        public static Vector2 XYZtoLatLong(Vector3 position, float radius){
-            float lat = Mathf.Acos(position.y / radius); //theta
-            float lon = Mathf.Atan2(position.x, position.z); //phi
-            lat *= Mathf.Rad2Deg;
-            lon *= Mathf.Rad2Deg;
-            return new Vector2(lat, lon);
-        }
-        
         public static int CalculateSampleSize(int k, float N)
         {
             float sigma_max = 40f;
@@ -41,6 +24,30 @@ namespace DefaultNamespace
             float denominator = (N - 1) * (float) Math.Pow(sigma_k, 2) + sigma_max_pow;
 
             return (int)(Math.Ceiling(numerator / denominator) + 0.5);
+        }
+        
+        public static Vector3 LatLonToECEF(float lat, float lon)
+        {
+            lat = Mathf.Deg2Rad * lat;
+            lon = Mathf.Deg2Rad * lon;
+
+            float a = 6378137.0f / 1000000; // semi-major axis
+            float b = 6356752.3142f / 1000000; // semi-minor axis
+            float f = (a - b) / a; // flattening
+            float e = Mathf.Sqrt(f * (2 - f)); // first eccentricity
+            float sinLat = Mathf.Sin(lat);
+            float cosLat = Mathf.Cos(lat);
+            float sinLon = Mathf.Sin(lon);
+            float cosLon = Mathf.Cos(lon);
+
+            float N = a / Mathf.Sqrt(1 - e * e * sinLat * sinLat);
+
+            float x = N * cosLat * cosLon;
+            float y = N * cosLat * sinLon;
+            float z = N * sinLat;
+
+            //Y points up in unity
+            return new Vector3(x, z, y);
         }
     }
     

@@ -13,7 +13,6 @@ public class ObservatoryAgent : Agent
 {
     private Dictionary<string, GameObject> _planets = new Dictionary<string, GameObject>();
     private Problem _problem;
-    private float _earthRadius;
     private int _previousSampleSize;
     private List<HeatmapWrapper> _terminateHeatmaps;
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
@@ -21,7 +20,6 @@ public class ObservatoryAgent : Agent
 
     public override void Initialize()
     {
-        _earthRadius = PlanetUtil.planetSizes["earth"] / 2;
         _problem = GeneratedPositionUtil.GETProblemFromCsv();
         InitializePlanetDict();
         InitializeHeatmaps();
@@ -103,8 +101,9 @@ public class ObservatoryAgent : Agent
 
         if (!terminated)
         {
-            _problem.turnOnNextObservatory(MathUtil.LatLongToXYZ(latitude, longitude, _earthRadius),
+            _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
                 latitude, longitude, action1, action2);
+            AddReward(0.005f);
             if (_problem.areAllObservatoriesOn())
             {
                 int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
