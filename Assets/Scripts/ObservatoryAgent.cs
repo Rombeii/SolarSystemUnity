@@ -190,7 +190,7 @@ public class ObservatoryAgent : Agent
         foreach (var generatedPosition in positions)
         {
             if (generatedPosition.Importance != 0 && 
-                IsPointInsideCone(from, generatedPosition.GETPosition(), -from, maxAngle))
+                IsPointInsideCone(generatedPosition.GETPosition(),from, (from - Vector3.zero).normalized, maxAngle))
             {
                 RaycastHit hit;
                 if (!Physics.Linecast(from, generatedPosition.GETPosition(), out hit)
@@ -206,8 +206,8 @@ public class ObservatoryAgent : Agent
     
     private static bool IsPointInsideCone(Vector3 point, Vector3 coneOrigin, Vector3 coneDirection, int maxAngle)
     {
-        var pointDirection = point - coneOrigin;
-        var angle = Vector3.Angle ( coneDirection, pointDirection );
+        Vector3 pointDirection = (point - coneOrigin).normalized;
+        var angle = Vector3.Angle(coneDirection, pointDirection);
         return angle < maxAngle;
     }
     
