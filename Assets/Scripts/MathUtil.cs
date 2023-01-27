@@ -31,8 +31,8 @@ namespace DefaultNamespace
             lat = Mathf.Deg2Rad * lat;
             lon = Mathf.Deg2Rad * lon;
 
-            float a = 6378137.0f / 1000000; // semi-major axis
-            float b = 6356752.3142f / 1000000; // semi-minor axis
+            float a = 6378137.0f; // semi-major axis
+            float b = 6356752.3142f; // semi-minor axis
             float f = (a - b) / a; // flattening
             float e = Mathf.Sqrt(f * (2 - f)); // first eccentricity
             float sinLat = Mathf.Sin(lat);
@@ -47,7 +47,7 @@ namespace DefaultNamespace
             float z = N * sinLat;
 
             //Y points up in unity
-            return new Vector3(x, z, y);
+            return new Vector3(x, z, y) / 1000000000;
         }
     }
     
