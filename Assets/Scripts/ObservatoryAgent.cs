@@ -59,7 +59,7 @@ public class ObservatoryAgent : Agent
         _monthlyRewardHeatmaps = new Dictionary<int, List<HeatmapWrapper>>();
         for (int i = 1; i <= 12; i++)
         {
-            DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Yearly");
+            DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Monthly");
             FileInfo[] monthlyRewardFiles = monthlyRewardDirectory.GetFiles("*.png");
             List<HeatmapWrapper> monthlyHeatmaps = new List<HeatmapWrapper>();
             foreach (var file in monthlyRewardFiles)
