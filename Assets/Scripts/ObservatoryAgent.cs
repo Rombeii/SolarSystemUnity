@@ -14,7 +14,7 @@ public class ObservatoryAgent : Agent
     private Dictionary<string, GameObject> _planets = new Dictionary<string, GameObject>();
     private Problem _problem;
     private int _previousSampleSize;
-    private List<HeatmapWrapper> _terminateHeatmaps;
+    private List<HeatmapWrapper> _invalidHeatmaps;
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
     private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
 
@@ -40,12 +40,12 @@ public class ObservatoryAgent : Agent
 
     private void InitializeHeatmaps()
     {
-        _terminateHeatmaps = new List<HeatmapWrapper>();
-        DirectoryInfo terminateDirectory = new DirectoryInfo(Application.dataPath + "/Resources/TerminateHeatmap/");
-        FileInfo[] terminateFiles = terminateDirectory.GetFiles("*.png");
-        foreach (var file in terminateFiles)
+        _invalidHeatmaps = new List<HeatmapWrapper>();
+        DirectoryInfo invalidDirectory = new DirectoryInfo(Application.dataPath + "/Resources/InvalidHeatmap/");
+        FileInfo[] invalidFiles = invalidDirectory.GetFiles("*.png");
+        foreach (var file in invalidFiles)
         {
-            _terminateHeatmaps.Add(new HeatmapWrapper(file.FullName));
+            _invalidHeatmaps.Add(new HeatmapWrapper(file.FullName));
         }
         
         _yearlyRewardHeatmaps = new List<HeatmapWrapper>();
@@ -89,36 +89,29 @@ public class ObservatoryAgent : Agent
         float action2 = actions.ContinuousActions[1];
         float latitude = MathUtil.MapBetweenValues(-1, 1, -90, 90, action1);
         float longitude = MathUtil.MapBetweenValues(-1, 1, -180, 180, action2);
-        bool terminated = false;
-        foreach (var terminateHeatmap in _terminateHeatmaps)
+        bool isInvalidPlacement = false;
+        foreach (var invalidHeatmap in _invalidHeatmaps)
         {
-            if (terminateHeatmap.ShouldTerminateBasedOnGrayScale(latitude, longitude))
+            if (invalidHeatmap.isInvalidPlacementBasedOnGrayScale(latitude, longitude))
             {
-                terminated = true;
+                isInvalidPlacement = true;
                 break;
             }
         }
-
-        if (!terminated)
+        
+        _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
+            latitude, longitude, action1, action2, isInvalidPlacement);
+        AddReward(0.005f);
+        if (_problem.areAllObservatoriesOn())
         {
-            _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
-                latitude, longitude, action1, action2);
-            AddReward(0.005f);
-            if (_problem.areAllObservatoriesOn())
-            {
-                int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
-                    ? _previousSampleSize
-                    : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
-                // float reward = CalculateReward() / _problem.GeneratedPositions.Count / _problem.getMaxPoints();
-                float reward = CalculateReward(sampleSize) / sampleSize / _problem.getMaxPoints();
-                // AddReward(_problem.GeneratedPositions.Count, reward);
-                AddReward(sampleSize, reward);
-                _previousSampleSize = sampleSize;
-                EndEpisode();
-            }
-        }
-        else
-        {
+            int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
+                ? _previousSampleSize
+                : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
+            // float reward = CalculateReward() / _problem.GeneratedPositions.Count / _problem.getMaxPoints();
+            float reward = CalculateReward(sampleSize) / sampleSize / _problem.getMaxPoints();
+            // AddReward(_problem.GeneratedPositions.Count, reward);
+            AddReward(sampleSize, reward);
+            _previousSampleSize = sampleSize;
             EndEpisode();
         }
     }
@@ -132,9 +125,12 @@ public class ObservatoryAgent : Agent
             SetPlanetsToPosition(_problem.GeneratedPositions[index]);
             foreach (var observatory in _problem.Observatories)
             {
-                List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[index],
-                    observatory.Angle);
-                distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
+                if (!observatory.IsInvalidPlacement)
+                {
+                    List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[index],
+                        observatory.Angle);
+                    distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
+                }
             }
             
             distinctPlanetsSeen.Remove("earth");
@@ -153,9 +149,12 @@ public class ObservatoryAgent : Agent
             SetPlanetsToPosition(_problem.GeneratedPositions[indices[index]]);
             foreach (var observatory in _problem.Observatories)
             {
-                List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
-                    observatory.Angle);
-                distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
+                if (!observatory.IsInvalidPlacement)
+                {
+                    List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
+                        observatory.Angle);
+                    distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
+                }
             }
             
             distinctPlanetsSeen.Remove("earth");

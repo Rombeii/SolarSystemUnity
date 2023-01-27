@@ -7,6 +7,7 @@ namespace DefaultNamespace
     {
         private Vector3 _location;
         private bool _isUsed;
+        private bool _isInvalidPlacement;
         private int _angle;
         private float _latitude;
         private float _latitudeAction;
@@ -22,11 +23,11 @@ namespace DefaultNamespace
             _isUsed = false;
             _yearlyRewardMultiplier = 1;
             _monthlyRewardMultiplier = new Dictionary<int, float>();
-            resetMonthlyRewardMultiplier();
+            ResetMonthlyRewardMultiplier();
         }
 
         public void turnOn(Vector3 location, float latitude, float longitude, float latitudeAction,
-            float longitudeAction)
+            float longitudeAction, bool isInvalidPlacement)
         {
             _location = location;
             _isUsed = true;
@@ -34,6 +35,7 @@ namespace DefaultNamespace
             _longitude = longitude;
             _latitudeAction = latitudeAction;
             _longitudeAction = longitudeAction;
+            _isInvalidPlacement = isInvalidPlacement;
         }
 
         public void Reset()
@@ -43,10 +45,11 @@ namespace DefaultNamespace
             _latitude = 0;
             _longitude = 0;
             _yearlyRewardMultiplier = 1;
-            resetMonthlyRewardMultiplier();
+            _isInvalidPlacement = true;
+            ResetMonthlyRewardMultiplier();
         }
 
-        private void resetMonthlyRewardMultiplier()
+        private void ResetMonthlyRewardMultiplier()
         {
             for (int i = 1; i <= 12; i++)
             {
@@ -94,6 +97,12 @@ namespace DefaultNamespace
         {
             get => _latitudeAction;
             set => _latitudeAction = value;
+        }
+
+        public bool IsInvalidPlacement
+        {
+            get => _isInvalidPlacement;
+            set => _isInvalidPlacement = value;
         }
     }
 }

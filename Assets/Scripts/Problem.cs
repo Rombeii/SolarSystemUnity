@@ -46,13 +46,14 @@ namespace DefaultNamespace
             return maxPoints;
         }
 
-        public void turnOnNextObservatory(Vector3 location, float latitude, float longitude, float action1, float action2)
+        public void turnOnNextObservatory(Vector3 location, float latitude, float longitude, float action1,
+            float action2, bool isInvalidPlacement)
         {
             foreach (var observatory in observatories)
             {
                 if (!observatory.IsUsed)
                 {
-                    observatory.turnOn(location, latitude, longitude, action1, action2);
+                    observatory.turnOn(location, latitude, longitude, action1, action2, isInvalidPlacement);
                     break;
                 }
             }

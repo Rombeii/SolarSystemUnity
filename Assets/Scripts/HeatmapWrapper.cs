@@ -19,7 +19,7 @@ namespace DefaultNamespace
         }
 
         //white -> terminate
-        public bool ShouldTerminateBasedOnGrayScale(float latitude, float longitude)
+        public bool isInvalidPlacementBasedOnGrayScale(float latitude, float longitude)
         {
             return GETPixelAt(latitude, longitude).grayscale >= 0.5;
         }
