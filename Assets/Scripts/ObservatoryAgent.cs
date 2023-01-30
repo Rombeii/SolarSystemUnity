@@ -72,10 +72,10 @@ public class ObservatoryAgent : Agent
     
     private void ResetScene()
     {
-        ResetObservatoryPositions();
+        ResetObservatories();
     }
 
-    private void ResetObservatoryPositions()
+    private void ResetObservatories()
     {
         foreach (var observatory in _problem.Observatories)
         {
@@ -87,8 +87,16 @@ public class ObservatoryAgent : Agent
     {
         float action1 = actions.ContinuousActions[0];
         float action2 = actions.ContinuousActions[1];
-        float latitude = MathUtil.MapBetweenValues(-1, 1, -90, 90, action1);
-        float longitude = MathUtil.MapBetweenValues(-1, 1, -180, 180, action2);
+        
+        int gridY = actions.DiscreteActions[0];
+        int gridX = actions.DiscreteActions[1];
+        
+        float plusLatitude = MathUtil.MapBetweenValues(-1, 1, 0, 10, action1);
+        float plusLongitude = MathUtil.MapBetweenValues(-1, 1, 0, 10, action2);
+
+        float latitude = 90 - gridY * 10 - plusLatitude;
+        float longitude = -180 + gridX * 10 + plusLongitude;
+
         bool isInvalidPlacement = false;
         foreach (var invalidHeatmap in _invalidHeatmaps)
         {
@@ -100,8 +108,7 @@ public class ObservatoryAgent : Agent
         }
         
         _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
-            latitude, longitude, action1, action2, isInvalidPlacement);
-        AddReward(0.005f);
+            latitude, longitude, action1, action2, gridY, gridX, isInvalidPlacement);
         if (_problem.areAllObservatoriesOn())
         {
             int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
@@ -233,7 +240,11 @@ public class ObservatoryAgent : Agent
     {
         foreach (var observatory in _problem.Observatories)
         {
-            sensor.AddObservation(observatory.Location.normalized);    
+            sensor.AddObservation(observatory.LatitudeAction);    
+            sensor.AddObservation(observatory.LongitudeAction);
+            sensor.AddObservation(observatory.GridY);
+            sensor.AddObservation(observatory.GridX);
+            sensor.AddObservation(observatory.IsInvalidPlacement);
         }
     }
 

@@ -8,6 +8,8 @@ namespace DefaultNamespace
         private Vector3 _location;
         private bool _isUsed;
         private bool _isInvalidPlacement;
+        private int _gridY;
+        private int _gridX;
         private int _angle;
         private float _latitude;
         private float _latitudeAction;
@@ -27,7 +29,7 @@ namespace DefaultNamespace
         }
 
         public void turnOn(Vector3 location, float latitude, float longitude, float latitudeAction,
-            float longitudeAction, bool isInvalidPlacement)
+            float longitudeAction, int gridY, int gridX, bool isInvalidPlacement)
         {
             _location = location;
             _isUsed = true;
@@ -47,6 +49,8 @@ namespace DefaultNamespace
             _yearlyRewardMultiplier = 1;
             _isInvalidPlacement = true;
             ResetMonthlyRewardMultiplier();
+            _gridY = -1;
+            _gridX = -1;
         }
 
         private void ResetMonthlyRewardMultiplier()
@@ -103,6 +107,18 @@ namespace DefaultNamespace
         {
             get => _isInvalidPlacement;
             set => _isInvalidPlacement = value;
+        }
+
+        public int GridY
+        {
+            get => _gridY;
+            set => _gridY = value;
+        }
+
+        public int GridX
+        {
+            get => _gridX;
+            set => _gridX = value;
         }
     }
 }

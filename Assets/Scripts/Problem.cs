@@ -47,13 +47,14 @@ namespace DefaultNamespace
         }
 
         public void turnOnNextObservatory(Vector3 location, float latitude, float longitude, float action1,
-            float action2, bool isInvalidPlacement)
+            float action2, int gridY, int gridX, bool isInvalidPlacement)
         {
             foreach (var observatory in observatories)
             {
                 if (!observatory.IsUsed)
                 {
-                    observatory.turnOn(location, latitude, longitude, action1, action2, isInvalidPlacement);
+                    observatory.turnOn(location, latitude, longitude, action1, action2, gridY,
+                        gridX, isInvalidPlacement);
                     break;
                 }
             }
