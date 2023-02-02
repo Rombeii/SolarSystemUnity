@@ -59,7 +59,7 @@ public class ObservatoryAgent : Agent
         _monthlyRewardHeatmaps = new Dictionary<int, List<HeatmapWrapper>>();
         for (int i = 1; i <= 12; i++)
         {
-            DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Monthly");
+            DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Monthly/" + i);
             FileInfo[] monthlyRewardFiles = monthlyRewardDirectory.GetFiles("*.png");
             List<HeatmapWrapper> monthlyHeatmaps = new List<HeatmapWrapper>();
             foreach (var file in monthlyRewardFiles)
@@ -111,6 +111,7 @@ public class ObservatoryAgent : Agent
             latitude, longitude, action1, action2, gridY, gridX, isInvalidPlacement);
         if (_problem.areAllObservatoriesOn())
         {
+            CalculateRewardMultipliers();
             int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
                 ? _previousSampleSize
                 : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
@@ -120,6 +121,27 @@ public class ObservatoryAgent : Agent
             AddReward(sampleSize, reward);
             _previousSampleSize = sampleSize;
             EndEpisode();
+        }
+    }
+
+    private void CalculateRewardMultipliers()
+    {
+        foreach (var observatory in _problem.Observatories)
+        {
+            foreach (var yearlyRewardHeatmap in _yearlyRewardHeatmaps)
+            {
+                observatory.YearlyRewardMultiplier *=
+                    yearlyRewardHeatmap.GetMultiplierBasedOnGrayscale(observatory.Latitude, observatory.Longitude);
+            }
+
+            foreach (var rewardHeatmapsByMonth in _monthlyRewardHeatmaps)
+            {
+                foreach (var monthlyRewardHeatmap in rewardHeatmapsByMonth.Value)
+                {
+                    observatory.MultiplyMonthlyMultiplier(rewardHeatmapsByMonth.Key,
+                        monthlyRewardHeatmap.GetMultiplierBasedOnGrayscale(observatory.Latitude, observatory.Longitude));
+                }
+            }
         }
     }
     
@@ -152,20 +174,32 @@ public class ObservatoryAgent : Agent
         List<int> indices = GetRandomNumber(0, _problem.GeneratedPositions.Count, sampleSize);
         for (int index = 0; index < indices.Count; index++)
         {
-            List<String> distinctPlanetsSeen = new List<string>();
-            SetPlanetsToPosition(_problem.GeneratedPositions[indices[index]]);
+            Dictionary<string, float> distinctPlanetsSeen = new Dictionary<string, float>();
+            List<ObservedPlanet> positions = _problem.GeneratedPositions[indices[index]];
+            DateTime observationDate = positions[0].ObservationDate;
+            SetPlanetsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
                 if (!observatory.IsInvalidPlacement)
                 {
                     List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
                         observatory.Angle);
-                    distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
+                    foreach (var planet in planetsInCone)
+                    {
+                        float observatoryMultiplier = observatory.GetOverallMultiplierForMonth(observationDate.Month);
+                        if (!distinctPlanetsSeen.ContainsKey(planet)|| distinctPlanetsSeen[planet] < observatoryMultiplier)
+                        {
+                            distinctPlanetsSeen[planet] = observatoryMultiplier;
+                        } 
+                    }
                 }
             }
             
             distinctPlanetsSeen.Remove("earth");
-            reward += distinctPlanetsSeen.Count;
+            foreach (var planet in distinctPlanetsSeen)
+            {
+                reward += planet.Value;
+            }
         }
         return reward;
     }

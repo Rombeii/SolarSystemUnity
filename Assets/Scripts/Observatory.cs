@@ -61,6 +61,16 @@ namespace DefaultNamespace
             }
         }
 
+        public void MultiplyMonthlyMultiplier(int monthIndex, float multiplier)
+        {
+            _monthlyRewardMultiplier[monthIndex] *= multiplier;
+        }
+
+        public float GetOverallMultiplierForMonth(int monthIndex)
+        {
+            return _yearlyRewardMultiplier * _monthlyRewardMultiplier[monthIndex];
+        }
+
         public bool IsUsed
         {
             get => _isUsed;
@@ -119,6 +129,18 @@ namespace DefaultNamespace
         {
             get => _gridX;
             set => _gridX = value;
+        }
+
+        public float YearlyRewardMultiplier
+        {
+            get => _yearlyRewardMultiplier;
+            set => _yearlyRewardMultiplier = value;
+        }
+
+        public Dictionary<int, float> MonthlyRewardMultiplier
+        {
+            get => _monthlyRewardMultiplier;
+            set => _monthlyRewardMultiplier = value;
         }
     }
 }
