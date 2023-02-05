@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DefaultNamespace;
+using Innovative.Geometry;
+using Innovative.SolarCalculator;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
@@ -180,7 +182,7 @@ public class ObservatoryAgent : Agent
             SetPlanetsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
-                if (!observatory.IsInvalidPlacement)
+                if (!observatory.IsInvalidPlacement && new SolarTimes(observationDate, 0, observatory.Latitude, observatory.Longitude).SolarElevation <= new Angle(0))
                 {
                     List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
                         observatory.Angle);
