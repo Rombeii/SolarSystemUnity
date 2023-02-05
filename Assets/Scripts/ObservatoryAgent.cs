@@ -20,13 +20,28 @@ public class ObservatoryAgent : Agent
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
     private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
 
+    private bool use_invalidate_heatmaps;
+    private bool use_reward_heatmaps;
+    private bool use_solar_elevation;
+    private bool use_minibatching;
+
     public override void Initialize()
     {
         _problem = GeneratedPositionUtil.GETProblemFromCsv();
+        InitializeEnvironmentParameters();
         InitializePlanetDict();
         InitializeHeatmaps();
 
         ResetScene();
+    }
+
+    private void InitializeEnvironmentParameters()
+    {
+        EnvironmentParameters parameters = Academy.Instance.EnvironmentParameters;
+        use_invalidate_heatmaps = parameters.GetWithDefault("use_invalidate_heatmaps", 0) == 1;
+        use_reward_heatmaps = parameters.GetWithDefault("use_reward_heatmaps", 0) == 1;
+        use_solar_elevation = parameters.GetWithDefault("use_solar_elevation", 0) == 1;
+        use_minibatching = parameters.GetWithDefault("use_minibatching", 0) == 1;
     }
     
     private void InitializePlanetDict()
@@ -43,32 +58,39 @@ public class ObservatoryAgent : Agent
     private void InitializeHeatmaps()
     {
         _invalidHeatmaps = new List<HeatmapWrapper>();
-        DirectoryInfo invalidDirectory = new DirectoryInfo(Application.dataPath + "/Resources/InvalidHeatmap/");
-        FileInfo[] invalidFiles = invalidDirectory.GetFiles("*.png");
-        foreach (var file in invalidFiles)
+        if(use_invalidate_heatmaps)
         {
-            _invalidHeatmaps.Add(new HeatmapWrapper(file.FullName));
-        }
-        
-        _yearlyRewardHeatmaps = new List<HeatmapWrapper>();
-        DirectoryInfo yearlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Yearly");
-        FileInfo[] yearlyRewardFiles = yearlyRewardDirectory.GetFiles("*.png");
-        foreach (var file in yearlyRewardFiles)
-        {
-            _yearlyRewardHeatmaps.Add(new HeatmapWrapper(file.FullName));
+            DirectoryInfo invalidDirectory = new DirectoryInfo(Application.dataPath + "/Resources/InvalidHeatmap/");
+            FileInfo[] invalidFiles = invalidDirectory.GetFiles("*.png");
+            foreach (var file in invalidFiles)
+            {
+                _invalidHeatmaps.Add(new HeatmapWrapper(file.FullName));
+            }
         }
 
+        _yearlyRewardHeatmaps = new List<HeatmapWrapper>();
         _monthlyRewardHeatmaps = new Dictionary<int, List<HeatmapWrapper>>();
-        for (int i = 1; i <= 12; i++)
+        
+        if (use_reward_heatmaps)
         {
-            DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Monthly/" + i);
-            FileInfo[] monthlyRewardFiles = monthlyRewardDirectory.GetFiles("*.png");
-            List<HeatmapWrapper> monthlyHeatmaps = new List<HeatmapWrapper>();
-            foreach (var file in monthlyRewardFiles)
+            DirectoryInfo yearlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Yearly");
+            FileInfo[] yearlyRewardFiles = yearlyRewardDirectory.GetFiles("*.png");
+            foreach (var file in yearlyRewardFiles)
             {
-                monthlyHeatmaps.Add(new HeatmapWrapper(file.FullName));
+                _yearlyRewardHeatmaps.Add(new HeatmapWrapper(file.FullName));
             }
-            _monthlyRewardHeatmaps.Add(i, monthlyHeatmaps);
+
+            for (int i = 1; i <= 12; i++)
+            {
+                DirectoryInfo monthlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Monthly/" + i);
+                FileInfo[] monthlyRewardFiles = monthlyRewardDirectory.GetFiles("*.png");
+                List<HeatmapWrapper> monthlyHeatmaps = new List<HeatmapWrapper>();
+                foreach (var file in monthlyRewardFiles)
+                {
+                    monthlyHeatmaps.Add(new HeatmapWrapper(file.FullName));
+                }
+                _monthlyRewardHeatmaps.Add(i, monthlyHeatmaps);
+            }
         }
     }
     
@@ -114,20 +136,17 @@ public class ObservatoryAgent : Agent
         if (_problem.areAllObservatoriesOn())
         {
             CalculateRewardMultipliers();
-            int sampleSize = _previousSampleSize == _problem.GeneratedPositions.Count
-                ? _previousSampleSize
-                : MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
-            // float reward = CalculateReward() / _problem.GeneratedPositions.Count / _problem.getMaxPoints();
-            float reward = CalculateReward(sampleSize) / sampleSize / _problem.getMaxPoints();
-            // AddReward(_problem.GeneratedPositions.Count, reward);
-            AddReward(sampleSize, reward);
-            _previousSampleSize = sampleSize;
+            CalculateReward();
             EndEpisode();
         }
     }
 
     private void CalculateRewardMultipliers()
     {
+        if (!use_reward_heatmaps)
+        {
+            return;
+        }
         foreach (var observatory in _problem.Observatories)
         {
             foreach (var yearlyRewardHeatmap in _yearlyRewardHeatmaps)
@@ -147,49 +166,54 @@ public class ObservatoryAgent : Agent
         }
     }
     
-    private float CalculateReward()
+    private void CalculateReward()
     {
-        float reward = 0;
-        for (int index = 0; index < _problem.GeneratedPositions.Count; index++)
+        int sampleSize = CalculateSampleSizeIfNeeded();
+        float reward;
+        if (sampleSize == _problem.GeneratedPositions.Count)
         {
-            List<String> distinctPlanetsSeen = new List<string>();
-            SetPlanetsToPosition(_problem.GeneratedPositions[index]);
-            foreach (var observatory in _problem.Observatories)
-            {
-                if (!observatory.IsInvalidPlacement)
-                {
-                    List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[index],
-                        observatory.Angle);
-                    distinctPlanetsSeen.AddRange(planetsInCone.Except(distinctPlanetsSeen));
-                }
-            }
-            
-            distinctPlanetsSeen.Remove("earth");
-            reward += distinctPlanetsSeen.Count;
+            reward = CalculateRewardBasedOnIndices(Enumerable.Range(0, _problem.GeneratedPositions.Count).ToList());
         }
-        return reward;
+        else
+        {
+            List<int> indices = GetRandomNumber(0, _problem.GeneratedPositions.Count, sampleSize);
+            reward = CalculateRewardBasedOnIndices(indices);
+        }
+        AddReward(sampleSize, reward / sampleSize / _problem.getMaxPoints());
+        _previousSampleSize = sampleSize;
+    }
+
+    private int CalculateSampleSizeIfNeeded()
+    {
+        if (!use_minibatching || _previousSampleSize == _problem.GeneratedPositions.Count)
+        {
+            return _problem.GeneratedPositions.Count;
+        }
+        else
+        {
+            return MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
+        }
     }
     
-    private float CalculateReward(int sampleSize)
+    private float CalculateRewardBasedOnIndices(List<int> indices)
     {
         float reward = 0;
-        List<int> indices = GetRandomNumber(0, _problem.GeneratedPositions.Count, sampleSize);
-        for (int index = 0; index < indices.Count; index++)
+        foreach (var index in indices)
         {
             Dictionary<string, float> distinctPlanetsSeen = new Dictionary<string, float>();
-            List<ObservedPlanet> positions = _problem.GeneratedPositions[indices[index]];
+            List<ObservedPlanet> positions = _problem.GeneratedPositions[index];
             DateTime observationDate = positions[0].ObservationDate;
             SetPlanetsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
-                if (!observatory.IsInvalidPlacement&& GetCorrectedSolarElevation(observationDate, observatory.Latitude, observatory.Longitude) <= new Angle(0))
+                if (!observatory.IsInvalidPlacement && IsSunUp(observationDate, observatory))
                 {
-                    List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
-                        observatory.Angle);
+                    List<String> planetsInCone = GetAllPlanetsInCone(observatory, positions, observatory.Angle);
                     foreach (var planet in planetsInCone)
                     {
                         float observatoryMultiplier = observatory.GetOverallMultiplierForMonth(observationDate.Month);
-                        if (!distinctPlanetsSeen.ContainsKey(planet)|| distinctPlanetsSeen[planet] < observatoryMultiplier)
+                        if (!distinctPlanetsSeen.ContainsKey(planet)
+                            || use_reward_heatmaps && distinctPlanetsSeen[planet] < observatoryMultiplier)
                         {
                             distinctPlanetsSeen[planet] = observatoryMultiplier;
                         } 
@@ -200,7 +224,7 @@ public class ObservatoryAgent : Agent
             distinctPlanetsSeen.Remove("earth");
             foreach (var planet in distinctPlanetsSeen)
             {
-                reward += planet.Value;
+                reward += planet.Value * positions.Find(p => p.Name == planet.Key).Importance;
             }
         }
         return reward;
@@ -214,10 +238,10 @@ public class ObservatoryAgent : Agent
         }
     }
 
-    private Angle GetCorrectedSolarElevation(DateTime observationDate, float latitude, float longitude)
+    private bool IsSunUp(DateTime observationDate, Observatory observatory)
     {
-        SolarTimes solarTimes = new SolarTimes(observationDate, 0, latitude, longitude);
-        return solarTimes.SolarElevation + solarTimes.AtmosphericRefraction;
+        SolarTimes solarTimes = new SolarTimes(observationDate, 0, observatory.Latitude, observatory.Longitude);
+        return !use_solar_elevation || solarTimes.SolarElevation + solarTimes.AtmosphericRefraction <= new Angle(0);
     }
 
     private List<int> GetRandomNumber(int from,int to,int numberOfElement)

@@ -24,3 +24,8 @@ behaviors:
     time_horizon: 128
     summary_freq: 1000
     threaded: true
+environment_parameters:
+  use_invalidate_heatmaps: 1
+  use_reward_heatmaps: 1
+  use_solar_elevation: 1
+  use_minibatching: 1
