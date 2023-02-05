@@ -182,7 +182,7 @@ public class ObservatoryAgent : Agent
             SetPlanetsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
-                if (!observatory.IsInvalidPlacement && new SolarTimes(observationDate, 0, observatory.Latitude, observatory.Longitude).SolarElevation <= new Angle(0))
+                if (!observatory.IsInvalidPlacement&& GetCorrectedSolarElevation(observationDate, observatory.Latitude, observatory.Longitude) <= new Angle(0))
                 {
                     List<String> planetsInCone = GetAllPlanetsInCone(observatory, _problem.GeneratedPositions[indices[index]],
                         observatory.Angle);
@@ -212,6 +212,12 @@ public class ObservatoryAgent : Agent
         {
             _planets[position.Name].transform.position = new Vector3(position.X, position.Y, position.Z);
         }
+    }
+
+    private Angle GetCorrectedSolarElevation(DateTime observationDate, float latitude, float longitude)
+    {
+        SolarTimes solarTimes = new SolarTimes(observationDate, 0, latitude, longitude);
+        return solarTimes.SolarElevation + solarTimes.AtmosphericRefraction;
     }
 
     private List<int> GetRandomNumber(int from,int to,int numberOfElement)
