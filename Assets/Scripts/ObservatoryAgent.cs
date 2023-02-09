@@ -206,7 +206,7 @@ public class ObservatoryAgent : Agent
             SetPlanetsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
-                if (!observatory.IsInvalidPlacement && IsSunUp(observationDate, observatory))
+                if (!observatory.IsInvalidPlacement && !IsSunUp(observationDate, observatory))
                 {
                     List<String> planetsInCone = GetAllPlanetsInCone(observatory, positions, observatory.Angle);
                     foreach (var planet in planetsInCone)
@@ -241,7 +241,7 @@ public class ObservatoryAgent : Agent
     private bool IsSunUp(DateTime observationDate, Observatory observatory)
     {
         SolarTimes solarTimes = new SolarTimes(observationDate, 0, observatory.Latitude, observatory.Longitude);
-        return !use_solar_elevation || solarTimes.SolarElevation + solarTimes.AtmosphericRefraction <= new Angle(0);
+        return use_solar_elevation && solarTimes.SolarElevation + solarTimes.AtmosphericRefraction >= new Angle(0);
     }
 
     private List<int> GetRandomNumber(int from,int to,int numberOfElement)
