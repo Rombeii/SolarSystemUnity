@@ -17,8 +17,14 @@ public class ObservatoryAgent : Agent
     private Problem _problem;
     private int _previousSampleSize;
     private List<HeatmapWrapper> _invalidHeatmaps;
+    private Dictionary<int, List<int>> _fullWhiteCells;
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
     private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
+
+    private const int NumberOfCols = 36;
+    private const int NumberOfRows = 18;
+    private const float CellWidth = 360f / NumberOfCols;
+    private const float CellHeight = 180f / NumberOfRows;
 
     private bool use_invalidate_heatmaps;
     private bool use_reward_heatmaps;
@@ -57,6 +63,18 @@ public class ObservatoryAgent : Agent
 
     private void InitializeHeatmaps()
     {
+        InitializeInvalidHeatmaps();
+        InitializeRewardHeatmaps();
+    }
+
+    private void InitializeInvalidHeatmaps()
+    {
+        _fullWhiteCells = new Dictionary<int, List<int>>();
+        for (int rowIndex = 0; rowIndex < NumberOfRows; rowIndex++)
+        {
+            _fullWhiteCells[rowIndex] = new List<int>();
+        }
+        
         _invalidHeatmaps = new List<HeatmapWrapper>();
         if(use_invalidate_heatmaps)
         {
@@ -68,6 +86,24 @@ public class ObservatoryAgent : Agent
             }
         }
 
+        for (int rowNum = 0; rowNum < NumberOfRows; rowNum++)
+        {
+            for (int colNum = 0; colNum < NumberOfCols; colNum++)
+            {
+                foreach (var invalidHeatmap in _invalidHeatmaps)
+                {
+                    if (invalidHeatmap.AreAllPixelsWhiteInCell(rowNum, colNum, NumberOfRows, NumberOfCols))
+                    {
+                        _fullWhiteCells[rowNum].Add(colNum);
+                        break;
+                    }          
+                }
+            }
+        }
+    }
+    
+    private void InitializeRewardHeatmaps()
+    {
         _yearlyRewardHeatmaps = new List<HeatmapWrapper>();
         _monthlyRewardHeatmaps = new Dictionary<int, List<HeatmapWrapper>>();
         
@@ -109,18 +145,42 @@ public class ObservatoryAgent : Agent
 
     public override void OnActionReceived(ActionBuffers actions)
     {
-        float action1 = actions.ContinuousActions[0];
-        float action2 = actions.ContinuousActions[1];
+        float latitudeAction = actions.ContinuousActions[0];
+        float longitudeAction = actions.ContinuousActions[1];
         
         int gridY = actions.DiscreteActions[0];
         int gridX = actions.DiscreteActions[1];
         
-        float plusLatitude = MathUtil.MapBetweenValues(-1, 1, 0, 10, action1);
-        float plusLongitude = MathUtil.MapBetweenValues(-1, 1, 0, 10, action2);
+        float plusLatitude = MathUtil.MapBetweenValues(-1, 1, 0, CellHeight, latitudeAction);
+        float plusLongitude = MathUtil.MapBetweenValues(-1, 1, 0, CellWidth, longitudeAction);
 
-        float latitude = 90 - gridY * 10 - plusLatitude;
-        float longitude = -180 + gridX * 10 + plusLongitude;
+        float latitude = 90 - gridY * CellHeight - plusLatitude;
+        float longitude = -180 + gridX * CellWidth + plusLongitude;
 
+        bool isInvalidPlacement = isInvalidPlacementBasedOnHeatmaps(latitude, longitude, gridX, gridY);
+        _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
+            latitude, longitude, latitudeAction, longitudeAction, gridY, gridX, isInvalidPlacement);
+        
+        if (_problem.areAllObservatoriesOn())
+        {
+            CalculateRewardMultipliers();
+            CalculateReward();
+            EndEpisode();
+        }
+    }
+
+    private bool isInvalidPlacementBasedOnHeatmaps(float latitude, float longitude, int gridX, int gridY)
+    {
+        if (!use_invalidate_heatmaps)
+        {
+            return false;
+        }
+
+        if (_fullWhiteCells[gridX].Contains(gridY))
+        {
+            return true;
+        }
+        
         bool isInvalidPlacement = false;
         foreach (var invalidHeatmap in _invalidHeatmaps)
         {
@@ -130,17 +190,10 @@ public class ObservatoryAgent : Agent
                 break;
             }
         }
-        
-        _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
-            latitude, longitude, action1, action2, gridY, gridX, isInvalidPlacement);
-        if (_problem.areAllObservatoriesOn())
-        {
-            CalculateRewardMultipliers();
-            CalculateReward();
-            EndEpisode();
-        }
-    }
 
+        return isInvalidPlacement;
+    }
+    
     private void CalculateRewardMultipliers()
     {
         if (!use_reward_heatmaps)
