@@ -176,7 +176,7 @@ public class ObservatoryAgent : Agent
             return false;
         }
 
-        if (_fullWhiteCells[gridX].Contains(gridY))
+        if (_fullWhiteCells[gridY].Contains(gridX))
         {
             return true;
         }
