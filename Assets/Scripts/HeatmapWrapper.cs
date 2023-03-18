@@ -20,6 +20,10 @@ namespace DefaultNamespace
                 byte[] fileData = File.ReadAllBytes(path);
                 _tex = new Texture2D(2, 2);
                 _tex.LoadImage(fileData);
+                _min_lat = min_lat;
+                _min_long = min_long;
+                _max_lat = max_lat;
+                _max_long = max_long;
             }
         }
 
