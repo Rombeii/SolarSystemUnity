@@ -38,6 +38,8 @@ namespace DefaultNamespace
             _latitudeAction = latitudeAction;
             _longitudeAction = longitudeAction;
             _isInvalidPlacement = isInvalidPlacement;
+            _gridY = gridY;
+            _gridX = gridX;
         }
 
         public void Reset()

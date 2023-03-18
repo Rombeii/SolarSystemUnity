@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using UnityEngine;
 
@@ -75,9 +76,9 @@ namespace DefaultNamespace
             float importance, DateTime observationDate)
         {
             return new ObservedPlanet(name,
-                float.Parse(position[0].Trim().Replace('.', ',')),
-                float.Parse(position[1].Trim().Replace('.', ',')),
-                float.Parse(position[2].Trim().Replace('.', ',')), diameter, importance,
+                float.Parse(position[0], CultureInfo.InvariantCulture),
+                float.Parse(position[1], CultureInfo.InvariantCulture),
+                float.Parse(position[2], CultureInfo.InvariantCulture), diameter, importance,
                 observationDate);
         }
     }
