@@ -23,13 +23,17 @@ public class ObservatoryAgent : Agent
 
     private const int NumberOfCols = 36;
     private const int NumberOfRows = 18;
-    private const float CellWidth = 360f / NumberOfCols;
-    private const float CellHeight = 180f / NumberOfRows;
+    private float _cellWidth;
+    private float _cellHeight;
 
-    private bool use_invalidate_heatmaps;
-    private bool use_reward_heatmaps;
-    private bool use_solar_elevation;
-    private bool use_minibatching;
+    private bool _useInvalidateHeatmaps;
+    private bool _useRewardHeatmaps;
+    private bool _useSolarElevation;
+    private bool _useMinibatching;
+    private float _minLat;
+    private float _minLong;
+    private float _maxLat;
+    private float _maxLong;
 
     public override void Initialize()
     {
@@ -44,10 +48,18 @@ public class ObservatoryAgent : Agent
     private void InitializeEnvironmentParameters()
     {
         EnvironmentParameters parameters = Academy.Instance.EnvironmentParameters;
-        use_invalidate_heatmaps = parameters.GetWithDefault("use_invalidate_heatmaps", 0) == 1;
-        use_reward_heatmaps = parameters.GetWithDefault("use_reward_heatmaps", 0) == 1;
-        use_solar_elevation = parameters.GetWithDefault("use_solar_elevation", 0) == 1;
-        use_minibatching = parameters.GetWithDefault("use_minibatching", 0) == 1;
+        _useInvalidateHeatmaps = parameters.GetWithDefault("use_invalidate_heatmaps", 0) == 1;
+        _useRewardHeatmaps = parameters.GetWithDefault("use_reward_heatmaps", 0) == 1;
+        _useSolarElevation = parameters.GetWithDefault("use_solar_elevation", 0) == 1;
+        _useMinibatching = parameters.GetWithDefault("use_minibatching", 0) == 1;
+        
+        _minLat = parameters.GetWithDefault("min_lat", -90);
+        _minLong = parameters.GetWithDefault("min_long", -180);
+        _maxLat = parameters.GetWithDefault("max_lat", 90f);
+        _maxLong = parameters.GetWithDefault("max_long", 180f);
+        
+        _cellWidth = (_maxLong - _minLong) / NumberOfCols;
+        _cellHeight = (_maxLat - _minLat) / NumberOfRows;
     }
     
     private void InitializePlanetDict()
@@ -76,13 +88,13 @@ public class ObservatoryAgent : Agent
         }
         
         _invalidHeatmaps = new List<HeatmapWrapper>();
-        if(use_invalidate_heatmaps)
+        if(_useInvalidateHeatmaps)
         {
             DirectoryInfo invalidDirectory = new DirectoryInfo(Application.dataPath + "/Resources/InvalidHeatmap/");
             FileInfo[] invalidFiles = invalidDirectory.GetFiles("*.png");
             foreach (var file in invalidFiles)
             {
-                _invalidHeatmaps.Add(new HeatmapWrapper(file.FullName));
+                _invalidHeatmaps.Add(new HeatmapWrapper(file.FullName, _minLat, _minLong, _maxLat, _maxLong));
             }
         }
 
@@ -107,13 +119,13 @@ public class ObservatoryAgent : Agent
         _yearlyRewardHeatmaps = new List<HeatmapWrapper>();
         _monthlyRewardHeatmaps = new Dictionary<int, List<HeatmapWrapper>>();
         
-        if (use_reward_heatmaps)
+        if (_useRewardHeatmaps)
         {
             DirectoryInfo yearlyRewardDirectory = new DirectoryInfo(Application.dataPath + "/Resources/RewardHeatmap/Yearly");
             FileInfo[] yearlyRewardFiles = yearlyRewardDirectory.GetFiles("*.png");
             foreach (var file in yearlyRewardFiles)
             {
-                _yearlyRewardHeatmaps.Add(new HeatmapWrapper(file.FullName));
+                _yearlyRewardHeatmaps.Add(new HeatmapWrapper(file.FullName, _minLat, _minLong, _maxLat, _maxLong));
             }
 
             for (int i = 1; i <= 12; i++)
@@ -123,7 +135,7 @@ public class ObservatoryAgent : Agent
                 List<HeatmapWrapper> monthlyHeatmaps = new List<HeatmapWrapper>();
                 foreach (var file in monthlyRewardFiles)
                 {
-                    monthlyHeatmaps.Add(new HeatmapWrapper(file.FullName));
+                    monthlyHeatmaps.Add(new HeatmapWrapper(file.FullName, _minLat, _minLong, _maxLat, _maxLong));
                 }
                 _monthlyRewardHeatmaps.Add(i, monthlyHeatmaps);
             }
@@ -151,11 +163,11 @@ public class ObservatoryAgent : Agent
         int gridY = actions.DiscreteActions[0];
         int gridX = actions.DiscreteActions[1];
         
-        float plusLatitude = MathUtil.MapBetweenValues(-1, 1, 0, CellHeight, latitudeAction);
-        float plusLongitude = MathUtil.MapBetweenValues(-1, 1, 0, CellWidth, longitudeAction);
+        float plusLatitude = MathUtil.MapBetweenValues(-1, 1, 0, _cellHeight, latitudeAction);
+        float plusLongitude = MathUtil.MapBetweenValues(-1, 1, 0, _cellWidth, longitudeAction);
 
-        float latitude = 90 - gridY * CellHeight - plusLatitude;
-        float longitude = -180 + gridX * CellWidth + plusLongitude;
+        float latitude = _maxLat - gridY * _cellHeight - plusLatitude;
+        float longitude = _minLong + gridX * _cellWidth + plusLongitude;
 
         bool isInvalidPlacement = isInvalidPlacementBasedOnHeatmaps(latitude, longitude, gridX, gridY);
         _problem.turnOnNextObservatory(MathUtil.LatLonToECEF(latitude, longitude),
@@ -171,7 +183,7 @@ public class ObservatoryAgent : Agent
 
     private bool isInvalidPlacementBasedOnHeatmaps(float latitude, float longitude, int gridX, int gridY)
     {
-        if (!use_invalidate_heatmaps)
+        if (!_useInvalidateHeatmaps)
         {
             return false;
         }
@@ -196,7 +208,7 @@ public class ObservatoryAgent : Agent
     
     private void CalculateRewardMultipliers()
     {
-        if (!use_reward_heatmaps)
+        if (!_useRewardHeatmaps)
         {
             return;
         }
@@ -238,7 +250,7 @@ public class ObservatoryAgent : Agent
 
     private int CalculateSampleSizeIfNeeded()
     {
-        if (!use_minibatching || _previousSampleSize == _problem.GeneratedPositions.Count)
+        if (!_useMinibatching || _previousSampleSize == _problem.GeneratedPositions.Count)
         {
             return _problem.GeneratedPositions.Count;
         }
@@ -266,7 +278,7 @@ public class ObservatoryAgent : Agent
                     {
                         float observatoryMultiplier = observatory.GetOverallMultiplierForMonth(observationDate.Month);
                         if (!distinctPlanetsSeen.ContainsKey(planet)
-                            || use_reward_heatmaps && distinctPlanetsSeen[planet] < observatoryMultiplier)
+                            || _useRewardHeatmaps && distinctPlanetsSeen[planet] < observatoryMultiplier)
                         {
                             distinctPlanetsSeen[planet] = observatoryMultiplier;
                         } 
@@ -294,7 +306,7 @@ public class ObservatoryAgent : Agent
     private bool IsSunUp(DateTime observationDate, Observatory observatory)
     {
         SolarTimes solarTimes = new SolarTimes(observationDate, 0, observatory.Latitude, observatory.Longitude);
-        return use_solar_elevation && solarTimes.SolarElevation + solarTimes.AtmosphericRefraction >= new Angle(0);
+        return _useSolarElevation && solarTimes.SolarElevation + solarTimes.AtmosphericRefraction >= new Angle(0);
     }
 
     private List<int> GetRandomNumber(int from,int to,int numberOfElement)
