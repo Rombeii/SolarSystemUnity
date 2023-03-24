@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace DefaultNamespace
 {
-    public class ObservedPlanet
+    public class ObservedObject
     {
         private string _name;
         private float _x;
@@ -11,9 +11,8 @@ namespace DefaultNamespace
         private float _z;
         private float _diameter;
         private float _importance;
-        private DateTime _observationDate;
 
-        public ObservedPlanet(string name, float x, float y, float z, float diameter, float importance, DateTime observationDate)
+        public ObservedObject(string name, float x, float y, float z, float diameter, float importance)
         {
             _name = name;
             _x = x;
@@ -21,7 +20,6 @@ namespace DefaultNamespace
             _z = z;
             _diameter = diameter;
             _importance = importance;
-            _observationDate = observationDate;
         }
 
         public Vector3 GETPosition()
@@ -63,12 +61,6 @@ namespace DefaultNamespace
         {
             get => _importance;
             set => _importance = value;
-        }
-
-        public DateTime ObservationDate
-        {
-            get => _observationDate;
-            set => _observationDate = value;
         }
     }
 }

@@ -6,14 +6,14 @@ namespace DefaultNamespace
 {
     public class Problem
     {
-        private List<List<ObservedPlanet>> generatedPositions;
+        private List<Observation> observations;
         private List<Observatory> observatories;
         private float maxPoints;
 
-        public List<List<ObservedPlanet>> GeneratedPositions
+        public List<Observation> Observations
         {
-            get => generatedPositions;
-            set => generatedPositions = value;
+            get => observations;
+            set => observations = value;
         }
 
         public List<Observatory> Observatories
@@ -25,7 +25,7 @@ namespace DefaultNamespace
         public Problem()
         {
             this.observatories = new List<Observatory>();
-            this.generatedPositions = new List<List<ObservedPlanet>>();
+            this.observations = new List<Observation>();
         }
 
         public void AddObservatoryWithAngle(int angle)
@@ -37,9 +37,9 @@ namespace DefaultNamespace
         {
             if (maxPoints == 0)
             {
-                for (int i = 0; i < generatedPositions[0].Count; i++)
+                for (int i = 0; i < observations[0].GETObservedObjects().Count; i++)
                 {
-                    maxPoints += generatedPositions[0][i].Importance;
+                    maxPoints += observations[0].GETObservedObjectAt(i).Importance;
                 }
             }
 

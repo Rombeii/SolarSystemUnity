@@ -41,6 +41,8 @@ public class ObservatoryAgent : Agent
         InitializeEnvironmentParameters();
         InitializePlanetDict();
         InitializeHeatmaps();
+        
+        List<Vector3> pts = MathUtil.GetEquidistantPointsOnSphere(16384, 0.00012f);
 
         ResetScene();
     }
@@ -64,12 +66,14 @@ public class ObservatoryAgent : Agent
     
     private void InitializePlanetDict()
     {
-        for (int i = 0; i < _problem.GeneratedPositions[0].Count; i++)
+        for (int i = 0; i < _problem.Observations[0].GETObservedObjects().Count; i++)
         {
-            GameObject newPlanet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            newPlanet.transform.parent = transform;
-            newPlanet.transform.name = _problem.GeneratedPositions[0][i].Name;
-            _planets.Add(_problem.GeneratedPositions[0][i].Name, newPlanet);
+            GameObject newObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            newObject.transform.parent = transform;
+            newObject.transform.name = _problem.Observations[0].GETObservedObjectAt(i).Name;
+            float diameter = _problem.Observations[0].GETObservedObjectAt(i).Diameter;
+            newObject.transform.localScale = new Vector3(diameter, diameter, diameter);
+            _planets.Add(_problem.Observations[0].GETObservedObjectAt(i).Name, newObject);
         }
     }
 
@@ -235,13 +239,13 @@ public class ObservatoryAgent : Agent
     {
         int sampleSize = CalculateSampleSizeIfNeeded();
         float reward;
-        if (sampleSize == _problem.GeneratedPositions.Count)
+        if (sampleSize == _problem.Observations.Count)
         {
-            reward = CalculateRewardBasedOnIndices(Enumerable.Range(0, _problem.GeneratedPositions.Count).ToList());
+            reward = CalculateRewardBasedOnIndices(Enumerable.Range(0, _problem.Observations.Count).ToList());
         }
         else
         {
-            List<int> indices = GetRandomNumber(0, _problem.GeneratedPositions.Count, sampleSize);
+            List<int> indices = GetRandomNumber(0, _problem.Observations.Count, sampleSize);
             reward = CalculateRewardBasedOnIndices(indices);
         }
         AddReward(sampleSize, reward / sampleSize / _problem.getMaxPoints());
@@ -250,13 +254,13 @@ public class ObservatoryAgent : Agent
 
     private int CalculateSampleSizeIfNeeded()
     {
-        if (!_useMinibatching || _previousSampleSize == _problem.GeneratedPositions.Count)
+        if (!_useMinibatching || _previousSampleSize == _problem.Observations.Count)
         {
-            return _problem.GeneratedPositions.Count;
+            return _problem.Observations.Count;
         }
         else
         {
-            return MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.GeneratedPositions.Count);
+            return MathUtil.CalculateSampleSize(CompletedEpisodes, _problem.Observations.Count);
         }
     }
     
@@ -266,8 +270,8 @@ public class ObservatoryAgent : Agent
         foreach (var index in indices)
         {
             Dictionary<string, float> distinctPlanetsSeen = new Dictionary<string, float>();
-            List<ObservedPlanet> positions = _problem.GeneratedPositions[index];
-            DateTime observationDate = positions[0].ObservationDate;
+            List<ObservedObject> positions = _problem.Observations[index].GETObservedObjects();
+            DateTime observationDate = _problem.Observations[index].GETObservationDate();
             SetPlanetsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
@@ -295,7 +299,7 @@ public class ObservatoryAgent : Agent
         return reward;
     }
     
-    private void SetPlanetsToPosition(List<ObservedPlanet> positions)
+    private void SetPlanetsToPosition(List<ObservedObject> positions)
     {
         foreach (var position in positions)
         {
@@ -320,7 +324,7 @@ public class ObservatoryAgent : Agent
         return numbers.ToList();
     }
     
-    private List<String> GetAllPlanetsInCone(Observatory observatory, List<ObservedPlanet> positions, int maxAngle)
+    private List<String> GetAllPlanetsInCone(Observatory observatory, List<ObservedObject> positions, int maxAngle)
     {
         Vector3 from = observatory.Location;
         List<String> planetsHit = new List<string>();

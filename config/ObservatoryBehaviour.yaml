@@ -25,10 +25,10 @@ behaviors:
     summary_freq: 1000
     threaded: true
 environment_parameters:
-  use_invalidate_heatmaps: 0
+  use_invalidate_heatmaps: 1
   use_reward_heatmaps: 0
-  use_solar_elevation: 0
-  use_minibatching: 0
+  use_solar_elevation: 1
+  use_minibatching: 1
   min_lat: 12
   min_long: 42
   max_lat: 26

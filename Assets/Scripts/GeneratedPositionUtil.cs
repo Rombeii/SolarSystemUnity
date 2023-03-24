@@ -30,7 +30,7 @@ namespace DefaultNamespace
                 List<float> importances = new List<float>();
                 while (!reader.EndOfStream)
                 {
-                    List<ObservedPlanet> positionsForTheDay = new List<ObservedPlanet>();
+                    List<ObservedObject> positionsForTheDay = new List<ObservedObject>();
                     var line = reader.ReadLine();
                     var values = line.Split(';');
                     if (lineNumber == 0)
@@ -55,31 +55,33 @@ namespace DefaultNamespace
                     else
                     {
                         string[] dateTimeValues = values[0].Split('-');
-                        DateTime dateTime = new DateTime(int.Parse(dateTimeValues[0]), int.Parse(dateTimeValues[1]),
-                            int.Parse(dateTimeValues[2]), int.Parse(dateTimeValues[3]), int.Parse(dateTimeValues[4]),
+                        DateTime observationDate = new DateTime(int.Parse(dateTimeValues[0]), 
+                            int.Parse(dateTimeValues[1]),
+                            int.Parse(dateTimeValues[2]), 
+                            int.Parse(dateTimeValues[3]),
+                            int.Parse(dateTimeValues[4]),
                             int.Parse(dateTimeValues[5]));
                         for (int i = 1; i < values.Length; i++)
                         {
                             int planetIndex = i - 1;
                             positionsForTheDay.Add(GenerateObservedPlanetFromCell(values[i].Split('/'),
-                                diameters[planetIndex], i.ToString(), importances[planetIndex], dateTime));
+                                diameters[planetIndex], i.ToString(), importances[planetIndex]));
                         }
                     
-                        problem.GeneratedPositions.Add(positionsForTheDay);
+                        problem.Observations.Add(new Observation(positionsForTheDay, observationDate));
                     }
                     lineNumber++;
                 }
             }
         }
 
-        private static ObservedPlanet GenerateObservedPlanetFromCell(string[] position, float diameter, string name,
-            float importance, DateTime observationDate)
+        private static ObservedObject GenerateObservedPlanetFromCell(string[] position, float diameter, string name,
+            float importance)
         {
-            return new ObservedPlanet(name,
+            return new ObservedObject(name,
                 float.Parse(position[0], CultureInfo.InvariantCulture),
                 float.Parse(position[1], CultureInfo.InvariantCulture),
-                float.Parse(position[2], CultureInfo.InvariantCulture), diameter, importance,
-                observationDate);
+                float.Parse(position[2], CultureInfo.InvariantCulture), diameter, importance);
         }
     }
 }
