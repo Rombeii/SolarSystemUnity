@@ -41,8 +41,6 @@ public class ObservatoryAgent : Agent
         InitializeEnvironmentParameters();
         InitializePlanetDict();
         InitializeHeatmaps();
-        
-        List<Vector3> pts = MathUtil.GetEquidistantPointsOnSphere(16384, 0.00012f);
 
         ResetScene();
     }
