@@ -13,7 +13,7 @@ using Random = System.Random;
 
 public class ObservatoryAgent : Agent
 {
-    private Dictionary<string, GameObject> _planets = new Dictionary<string, GameObject>();
+    private Dictionary<string, GameObject> _observedObjects = new Dictionary<string, GameObject>();
     private Problem _problem;
     private int _previousSampleSize;
     private List<HeatmapWrapper> _invalidHeatmaps;
@@ -21,6 +21,7 @@ public class ObservatoryAgent : Agent
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
     private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
 
+    private const float EarthRadius = 0.006371f;
     private const int NumberOfCols = 36;
     private const int NumberOfRows = 18;
     private float _cellWidth;
@@ -30,19 +31,42 @@ public class ObservatoryAgent : Agent
     private bool _useRewardHeatmaps;
     private bool _useSolarElevation;
     private bool _useMinibatching;
+    private bool _checkIfObjectsAreCovered;
+    
     private float _minLat;
     private float _minLong;
     private float _maxLat;
     private float _maxLong;
 
+    private bool _createPointsInASphere;
+    private int _numberOfSpheres;
+    private float _sphereDistance;
+
     public override void Initialize()
     {
         _problem = GeneratedPositionUtil.GETProblemFromCsv();
         InitializeEnvironmentParameters();
-        InitializePlanetDict();
+        CreatePointsInASphere();
+        InitializeObservedObjectDict();
         InitializeHeatmaps();
-
         ResetScene();
+    }
+
+    private void CreatePointsInASphere()
+    {
+        if (_createPointsInASphere)
+        {
+            List<Vector3> pts = MathUtil.GetEquidistantPointsOnSphere(_numberOfSpheres, _sphereDistance + EarthRadius);
+            foreach (var observation in _problem.Observations)
+            {
+                for (int i = 0; i < pts.Count; i++)
+                {
+                    Vector3 point = pts[i];
+                    observation.AddObservedObject(new ObservedObject("Sphere" + i, point.x, point.y, point.z,
+                        0.0001f, 1));
+                }
+            } 
+        }
     }
 
     private void InitializeEnvironmentParameters()
@@ -52,6 +76,11 @@ public class ObservatoryAgent : Agent
         _useRewardHeatmaps = parameters.GetWithDefault("use_reward_heatmaps", 0) == 1;
         _useSolarElevation = parameters.GetWithDefault("use_solar_elevation", 0) == 1;
         _useMinibatching = parameters.GetWithDefault("use_minibatching", 0) == 1;
+        _checkIfObjectsAreCovered = parameters.GetWithDefault("check_if_objects_are_covered", 1) == 1;
+        
+        _createPointsInASphere = parameters.GetWithDefault("create_points_in_a_sphere", 0) == 1;
+        _numberOfSpheres = (int) parameters.GetWithDefault("number_of_spheres", 16384);
+        _sphereDistance = parameters.GetWithDefault("sphere_distance", 0.00012f);
         
         _minLat = parameters.GetWithDefault("min_lat", -90);
         _minLong = parameters.GetWithDefault("min_long", -180);
@@ -62,7 +91,7 @@ public class ObservatoryAgent : Agent
         _cellHeight = (_maxLat - _minLat) / NumberOfRows;
     }
     
-    private void InitializePlanetDict()
+    private void InitializeObservedObjectDict()
     {
         for (int i = 0; i < _problem.Observations[0].GETObservedObjects().Count; i++)
         {
@@ -71,7 +100,7 @@ public class ObservatoryAgent : Agent
             newObject.transform.name = _problem.Observations[0].GETObservedObjectAt(i).Name;
             float diameter = _problem.Observations[0].GETObservedObjectAt(i).Diameter;
             newObject.transform.localScale = new Vector3(diameter, diameter, diameter);
-            _planets.Add(_problem.Observations[0].GETObservedObjectAt(i).Name, newObject);
+            _observedObjects.Add(_problem.Observations[0].GETObservedObjectAt(i).Name, newObject);
         }
     }
 
@@ -110,7 +139,7 @@ public class ObservatoryAgent : Agent
                     {
                         _fullWhiteCells[rowNum].Add(colNum);
                         break;
-                    }          
+                    }
                 }
             }
         }
@@ -146,14 +175,17 @@ public class ObservatoryAgent : Agent
     
     private void ResetScene()
     {
-        ResetObservatories();
+        ResetNonStaticObservatories();
     }
 
-    private void ResetObservatories()
+    private void ResetNonStaticObservatories()
     {
         foreach (var observatory in _problem.Observatories)
         {
-            observatory.Reset();
+            if (!observatory.IsStatic)
+            {
+                observatory.Reset();    
+            }
         }
     }
 
@@ -267,41 +299,41 @@ public class ObservatoryAgent : Agent
         float reward = 0;
         foreach (var index in indices)
         {
-            Dictionary<string, float> distinctPlanetsSeen = new Dictionary<string, float>();
+            Dictionary<string, float> distinctObjectsSeen = new Dictionary<string, float>();
             List<ObservedObject> positions = _problem.Observations[index].GETObservedObjects();
             DateTime observationDate = _problem.Observations[index].GETObservationDate();
-            SetPlanetsToPosition(positions);
+            SetObjectsToPosition(positions);
             foreach (var observatory in _problem.Observatories)
             {
                 if (!observatory.IsInvalidPlacement && !IsSunUp(observationDate, observatory))
                 {
-                    List<String> planetsInCone = GetAllPlanetsInCone(observatory, positions, observatory.Angle);
-                    foreach (var planet in planetsInCone)
+                    List<String> objectsInCone = GetAllObjectsInCone(observatory, positions, observatory.Angle);
+                    foreach (var observedObject in objectsInCone)
                     {
                         float observatoryMultiplier = observatory.GetOverallMultiplierForMonth(observationDate.Month);
-                        if (!distinctPlanetsSeen.ContainsKey(planet)
-                            || _useRewardHeatmaps && distinctPlanetsSeen[planet] < observatoryMultiplier)
+                        if (!distinctObjectsSeen.ContainsKey(observedObject)
+                            || _useRewardHeatmaps && distinctObjectsSeen[observedObject] < observatoryMultiplier)
                         {
-                            distinctPlanetsSeen[planet] = observatoryMultiplier;
+                            distinctObjectsSeen[observedObject] = observatoryMultiplier;
                         } 
                     }
                 }
             }
             
-            distinctPlanetsSeen.Remove("earth");
-            foreach (var planet in distinctPlanetsSeen)
+            distinctObjectsSeen.Remove("earth");
+            foreach (var observedObject in distinctObjectsSeen)
             {
-                reward += planet.Value * positions.Find(p => p.Name == planet.Key).Importance;
+                reward += observedObject.Value * positions.Find(p => p.Name == observedObject.Key).Importance;
             }
         }
         return reward;
     }
     
-    private void SetPlanetsToPosition(List<ObservedObject> positions)
+    private void SetObjectsToPosition(List<ObservedObject> positions)
     {
         foreach (var position in positions)
         {
-            _planets[position.Name].transform.position = new Vector3(position.X, position.Y, position.Z);
+            _observedObjects[position.Name].transform.position = new Vector3(position.X, position.Y, position.Z);
         }
     }
 
@@ -322,33 +354,28 @@ public class ObservatoryAgent : Agent
         return numbers.ToList();
     }
     
-    private List<String> GetAllPlanetsInCone(Observatory observatory, List<ObservedObject> positions, int maxAngle)
+    private List<String> GetAllObjectsInCone(Observatory observatory, List<ObservedObject> positions, int maxAngle)
     {
         Vector3 from = observatory.Location;
-        List<String> planetsHit = new List<string>();
+        List<String> objectsHit = new List<string>();
 
         foreach (var generatedPosition in positions)
         {
             if (generatedPosition.Importance != 0 && 
-                IsPointInsideCone(generatedPosition.GETPosition(),from, (from - Vector3.zero).normalized, maxAngle))
+                MathUtil.IsPointInsideCone(generatedPosition.GETPosition(),from,
+                    (from - Vector3.zero).normalized, maxAngle))
             {
                 RaycastHit hit;
-                if (!Physics.Linecast(from, generatedPosition.GETPosition(), out hit)
+                if (!_checkIfObjectsAreCovered
+                    || !Physics.Linecast(from, generatedPosition.GETPosition(), out hit)
                     || generatedPosition.Name.Equals(hit.collider.name))
                 {
-                    planetsHit.Add(generatedPosition.Name);
+                    objectsHit.Add(generatedPosition.Name);
                 }
             }
         }
 
-        return planetsHit;
-    }
-    
-    private static bool IsPointInsideCone(Vector3 point, Vector3 coneOrigin, Vector3 coneDirection, int maxAngle)
-    {
-        Vector3 pointDirection = (point - coneOrigin).normalized;
-        var angle = Vector3.Angle(coneDirection, pointDirection);
-        return angle < maxAngle;
+        return objectsHit;
     }
     
     private void AddReward(int sampleSize, float reward)

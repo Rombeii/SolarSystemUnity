@@ -33,6 +33,11 @@ namespace DefaultNamespace
             observatories.Add(new Observatory(angle));
         }
 
+        public void MakeObservatoryStatic(int index, float latitude, float longitude)
+        {
+            observatories[index].MakeStatic(latitude, longitude);
+        }
+
         public float getMaxPoints()
         {
             if (maxPoints == 0)

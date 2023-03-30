@@ -43,13 +43,33 @@ namespace DefaultNamespace
                     {
                         for (int i = 0; i < values.Length; i++)
                         {
-                            diameters.Add(float.Parse(values[i].Trim().Replace('.', ',')));
+                            String location = values[i].Trim();
+                            if (location.Contains("/"))
+                            {
+                                string[] latLongData = location.Split('/');
+                                float latitude = float.Parse(latLongData[0], CultureInfo.InvariantCulture);
+                                float longitude = float.Parse(latLongData[1], CultureInfo.InvariantCulture);
+                                problem.MakeObservatoryStatic(i, latitude, longitude);
+                            }
                         }
-                    } else if (lineNumber == 2)
+                    } 
+                    else if (lineNumber == 2)
                     {
-                        for (int i = 0; i < values.Length; i++)
+                        if (line != "")
                         {
-                            importances.Add(float.Parse(values[i].Trim().Replace('.', ',')));
+                            for (int i = 0; i < values.Length; i++)
+                            {
+                                diameters.Add(float.Parse(values[i].Trim(), CultureInfo.InvariantCulture));
+                            }
+                        }
+                    } else if (lineNumber == 3)
+                    {
+                        if (line != "")
+                        {
+                            for (int i = 0; i < values.Length; i++)
+                            {
+                                importances.Add(float.Parse(values[i].Trim(), CultureInfo.InvariantCulture));
+                            }
                         }
                     }
                     else
@@ -63,9 +83,12 @@ namespace DefaultNamespace
                             int.Parse(dateTimeValues[5]));
                         for (int i = 1; i < values.Length; i++)
                         {
-                            int planetIndex = i - 1;
-                            positionsForTheDay.Add(GenerateObservedPlanetFromCell(values[i].Split('/'),
-                                diameters[planetIndex], i.ToString(), importances[planetIndex]));
+                            if (values[i] != "")
+                            {
+                                int planetIndex = i - 1;
+                                positionsForTheDay.Add(GenerateObservedPlanetFromCell(values[i].Split('/'),
+                                    diameters[planetIndex], i.ToString(), importances[planetIndex]));
+                            }
                         }
                     
                         problem.Observations.Add(new Observation(positionsForTheDay, observationDate));

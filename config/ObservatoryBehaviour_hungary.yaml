@@ -27,14 +27,9 @@ behaviors:
 environment_parameters:
   use_invalidate_heatmaps: 1
   use_reward_heatmaps: 0
-  use_solar_elevation: 0
-  use_minibatching: 0
-  check_if_objects_are_covered: 0
-  create_points_in_a_sphere: 1
-  number_of_spheres: 32768
-  sphere_distance: 0.00012
-  min_lat: -90
-  min_long: -180
-  max_lat: 90
-  max_long: 180
-
+  use_solar_elevation: 1
+  use_minibatching: 1
+  min_lat: 12
+  min_long: 42
+  max_lat: 26
+  max_long: 55

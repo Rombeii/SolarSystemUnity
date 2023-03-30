@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace DefaultNamespace
@@ -48,6 +49,36 @@ namespace DefaultNamespace
 
             //Y points up in unity
             return new Vector3(x, z, y) / 1000000000;
+        }
+        
+        public static bool IsPointInsideCone(Vector3 point, Vector3 coneOrigin, Vector3 coneDirection, int maxAngle)
+        {
+            Vector3 pointDirection = (point - coneOrigin).normalized;
+            var angle = Vector3.Angle(coneDirection, pointDirection);
+            return angle < maxAngle;
+        }
+        
+        public static List<Vector3> GetEquidistantPointsOnSphere(int numPoints, float radius)
+        {
+            List<Vector3> points = new List<Vector3>();
+            float inc = Mathf.PI * (3 - Mathf.Sqrt(5));
+            float off = 2.0f / numPoints;
+            float x = 0;
+            float y = 0;
+            float z = 0;
+            float r = 0;
+            float phi = 0;
+       
+            for (var k = 0; k < numPoints; k++){
+                y = k * off - 1 + (off /2);
+                r = Mathf.Sqrt(1 - y * y);
+                phi = k * inc;
+                x = Mathf.Cos(phi) * r;
+                z = Mathf.Sin(phi) * r;
+           
+                points.Add(new Vector3(x, y, z) * radius);
+            }
+            return points;
         }
     }
     

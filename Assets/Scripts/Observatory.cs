@@ -11,6 +11,7 @@ namespace DefaultNamespace
         private int _gridY;
         private int _gridX;
         private int _angle;
+        private bool _isStatic;
         private float _latitude;
         private float _latitudeAction;
         private float _longitude;
@@ -25,7 +26,17 @@ namespace DefaultNamespace
             _isUsed = false;
             _yearlyRewardMultiplier = 1;
             _monthlyRewardMultiplier = new Dictionary<int, float>();
+            _isStatic = false;
             ResetMonthlyRewardMultiplier();
+        }
+        
+        public void MakeStatic(float latitude, float longitude)
+        {
+            _latitude = latitude;
+            _longitude = longitude;
+            _location = MathUtil.LatLonToECEF(latitude, longitude);
+            _isStatic = true;
+            _isUsed = true;
         }
 
         public void turnOn(Vector3 location, float latitude, float longitude, float latitudeAction,
@@ -139,10 +150,6 @@ namespace DefaultNamespace
             set => _yearlyRewardMultiplier = value;
         }
 
-        public Dictionary<int, float> MonthlyRewardMultiplier
-        {
-            get => _monthlyRewardMultiplier;
-            set => _monthlyRewardMultiplier = value;
-        }
+        public bool IsStatic => _isStatic;
     }
 }

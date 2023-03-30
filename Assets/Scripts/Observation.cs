@@ -28,6 +28,11 @@ namespace DefaultNamespace
         {
             return _observationDate;
         }
+
+        public void AddObservedObject(ObservedObject observedObject)
+        {
+            _observedObjects.Add(observedObject);
+        }
     }
     
 }
