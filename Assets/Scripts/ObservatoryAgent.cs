@@ -38,6 +38,9 @@ public class ObservatoryAgent : Agent
     private float _maxLat;
     private float _maxLong;
 
+    private float _minDistanceForTriangulation;
+    private float _maxDistanceForTriangulation;
+
     private bool _createPointsInASphere;
     private int _numberOfSpheres;
     private float _sphereDistance;
@@ -86,6 +89,9 @@ public class ObservatoryAgent : Agent
         _minLong = parameters.GetWithDefault("min_long", -180);
         _maxLat = parameters.GetWithDefault("max_lat", 90f);
         _maxLong = parameters.GetWithDefault("max_long", 180f);
+        
+        _minDistanceForTriangulation = parameters.GetWithDefault("min_distance_for_triangulation", 0f);
+        _maxDistanceForTriangulation = parameters.GetWithDefault("max_distance_for_triangulation", Mathf.Infinity);
         
         _cellWidth = (_maxLong - _minLong) / NumberOfCols;
         _cellHeight = (_maxLat - _minLat) / NumberOfRows;
@@ -209,6 +215,7 @@ public class ObservatoryAgent : Agent
         
         if (_problem.areAllObservatoriesOn())
         {
+            InvalidateForTriangulation();
             CalculateRewardMultipliers();
             CalculateReward();
             EndEpisode();
@@ -239,6 +246,40 @@ public class ObservatoryAgent : Agent
 
         return isInvalidPlacement;
     }
+
+    private void InvalidateForTriangulation()
+    {
+        if (_minDistanceForTriangulation != 0f && !float.IsPositiveInfinity(_maxDistanceForTriangulation))
+        {
+            foreach (var observatory in _problem.Observatories)
+            {
+                int numberOfObservatoriesWithinDistance = 0;
+                foreach (var observatoryForDistance in _problem.Observatories)
+                {
+                    if (numberOfObservatoriesWithinDistance > 1)
+                    {
+                        break;
+                    }
+
+                    if (observatory != observatoryForDistance)
+                    {
+                        float distanceBetweenObservatories =
+                            Vector3.Distance(observatory.Location, observatoryForDistance.Location);
+                        if (distanceBetweenObservatories > _minDistanceForTriangulation
+                            && distanceBetweenObservatories < _maxDistanceForTriangulation)
+                        {
+                            numberOfObservatoriesWithinDistance++;
+                        }
+                    }
+                }
+
+                if (numberOfObservatoriesWithinDistance < 2)
+                {
+                    observatory.IsInvalidPlacement = true;
+                }
+            }
+        }
+    }
     
     private void CalculateRewardMultipliers()
     {
@@ -248,18 +289,22 @@ public class ObservatoryAgent : Agent
         }
         foreach (var observatory in _problem.Observatories)
         {
-            foreach (var yearlyRewardHeatmap in _yearlyRewardHeatmaps)
+            if (!observatory.IsInvalidPlacement)
             {
-                observatory.YearlyRewardMultiplier *=
-                    yearlyRewardHeatmap.GetMultiplierBasedOnGrayscale(observatory.Latitude, observatory.Longitude);
-            }
-
-            foreach (var rewardHeatmapsByMonth in _monthlyRewardHeatmaps)
-            {
-                foreach (var monthlyRewardHeatmap in rewardHeatmapsByMonth.Value)
+                foreach (var yearlyRewardHeatmap in _yearlyRewardHeatmaps)
                 {
-                    observatory.MultiplyMonthlyMultiplier(rewardHeatmapsByMonth.Key,
-                        monthlyRewardHeatmap.GetMultiplierBasedOnGrayscale(observatory.Latitude, observatory.Longitude));
+                    observatory.YearlyRewardMultiplier *=
+                        yearlyRewardHeatmap.GetMultiplierBasedOnGrayscale(observatory.Latitude, observatory.Longitude);
+                }
+
+                foreach (var rewardHeatmapsByMonth in _monthlyRewardHeatmaps)
+                {
+                    foreach (var monthlyRewardHeatmap in rewardHeatmapsByMonth.Value)
+                    {
+                        observatory.MultiplyMonthlyMultiplier(rewardHeatmapsByMonth.Key,
+                            monthlyRewardHeatmap.GetMultiplierBasedOnGrayscale(observatory.Latitude,
+                                observatory.Longitude));
+                    }
                 }
             }
         }

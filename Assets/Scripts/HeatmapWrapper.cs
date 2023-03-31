@@ -8,22 +8,22 @@ namespace DefaultNamespace
     public class HeatmapWrapper
     {
         private Texture2D _tex;
-        private float _min_lat;
-        private float _min_long;
-        private float _max_lat;
-        private float _max_long;
+        private float _minLat;
+        private float _minLong;
+        private float _maxLat;
+        private float _maxLong;
         
         
-        public HeatmapWrapper(String path, float min_lat, float min_long, float max_lat, float max_long)
+        public HeatmapWrapper(String path, float minLat, float minLong, float maxLat, float maxLong)
         {
             if (File.Exists(path))     {
                 byte[] fileData = File.ReadAllBytes(path);
                 _tex = new Texture2D(2, 2);
                 _tex.LoadImage(fileData);
-                _min_lat = min_lat;
-                _min_long = min_long;
-                _max_lat = max_lat;
-                _max_long = max_long;
+                _minLat = minLat;
+                _minLong = minLong;
+                _maxLat = maxLat;
+                _maxLong = maxLong;
             }
         }
 
@@ -60,8 +60,8 @@ namespace DefaultNamespace
 
         private Color GETPixelAt(float latitude, float longitude)
         {
-            var x = MathUtil.MapBetweenValues(_min_long, _max_long, 0f, _tex.width, longitude);
-            var y = MathUtil.MapBetweenValues(_min_lat, _max_lat, 0f, _tex.height, latitude);
+            var x = MathUtil.MapBetweenValues(_minLong, _maxLong, 0f, _tex.width, longitude);
+            var y = MathUtil.MapBetweenValues(_minLat, _maxLat, 0f, _tex.height, latitude);
             return _tex.GetPixel((int) x, (int) y);
         }
     }
