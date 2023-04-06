@@ -250,29 +250,29 @@ public class ObservatoryAgent : Agent
 
     bool CheckIfObservatoriesWithinDistance(List<Observatory> observatories, float minDistance, float maxDistance)
     {
-        
-        // Check if there are at least 3 Observatories in the list
-        if (observatories.Count < 3) {
+        int n = observatories.Count;
+        if (n < 3) {
             return false;
         }
-        
-        // Loop through all possible combinations of 3 Observatories
-        for (int i = 0; i < observatories.Count - 2; i++)
+    
+        for (int i = 0; i < n - 2; i++)
         {
-            for (int j = i + 1; j < observatories.Count - 1; j++)
+            for (int j = i + 1; j < n - 1; j++)
             {
-                for (int k = j + 1; k < observatories.Count; k++)
+                float distance1 = _distanceCache.GetDistance(observatories[i], observatories[j]);
+                if (distance1 < minDistance || distance1 > maxDistance) {
+                    continue;
+                }
+            
+                for (int k = j + 1; k < n; k++)
                 {
-                    // Calculate the distances between the 3 Obervatories
-                    float distance1 = _distanceCache.GetDistance(observatories[i], observatories[j]);
                     float distance2 = _distanceCache.GetDistance(observatories[i], observatories[k]);
+                    if (distance2 < minDistance || distance2 > maxDistance) {
+                        continue;
+                    }
+                
                     float distance3 = _distanceCache.GetDistance(observatories[j], observatories[k]);
-
-                    // Check if all distances are between the minDistance and maxDistance
-                    if (distance1 >= minDistance && distance1 <= maxDistance &&
-                        distance2 >= minDistance && distance2 <= maxDistance &&
-                        distance3 >= minDistance && distance3 <= maxDistance)
-                    {
+                    if (distance3 >= minDistance && distance3 <= maxDistance) {
                         return true;
                     }
                 }
@@ -280,6 +280,7 @@ public class ObservatoryAgent : Agent
         }
         return false;
     }
+
 
     private bool UseTriangulation()
     {
@@ -347,12 +348,13 @@ public class ObservatoryAgent : Agent
     private float CalculateRewardBasedOnIndices(List<int> indices)
     {
         float reward = 0;
+        Dictionary<string, List<KeyValuePair<int, float>>> objectsSeen = new Dictionary<string, List<KeyValuePair<int, float>>>();
         foreach (var index in indices)
         {
-            Dictionary<string, List<KeyValuePair<int, float>>> objectsSeen = new Dictionary<string, List<KeyValuePair<int, float>>>();
             List<ObservedObject> positions = _problem.Observations[index].GETObservedObjects();
             DateTime observationDate = _problem.Observations[index].GETObservationDate();
             SetObjectsToPosition(positions);
+
             foreach (var observatory in _problem.Observatories)
             {
                 if (!observatory.IsInvalidPlacement && !IsSunUp(observationDate, observatory))
@@ -369,7 +371,7 @@ public class ObservatoryAgent : Agent
                     }
                 }
             }
-            
+
             objectsSeen.Remove("earth");
             foreach (var observedObject in objectsSeen)
             {
@@ -380,6 +382,8 @@ public class ObservatoryAgent : Agent
                     reward += observedObject.Value.Max(pair => pair.Value) * positions.Find(p => p.Name == observedObject.Key).Importance;
                 }
             }
+
+            objectsSeen.Clear();
         }
         return reward;
     }
