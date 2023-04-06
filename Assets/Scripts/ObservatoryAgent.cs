@@ -215,7 +215,6 @@ public class ObservatoryAgent : Agent
         
         if (_problem.areAllObservatoriesOn())
         {
-            InvalidateForTriangulation();
             CalculateRewardMultipliers();
             CalculateReward();
             EndEpisode();
@@ -247,38 +246,42 @@ public class ObservatoryAgent : Agent
         return isInvalidPlacement;
     }
 
-    private void InvalidateForTriangulation()
+    bool CheckIfObservatoriesWithinDistance(List<Observatory> observatories, float minDistance, float maxDistance)
     {
-        if (_minDistanceForTriangulation != 0f && !float.IsPositiveInfinity(_maxDistanceForTriangulation))
+        
+        // Check if there are at least 3 Observatories in the list
+        if (observatories.Count < 3) {
+            return false;
+        }
+        
+        // Loop through all possible combinations of 3 Observatories
+        for (int i = 0; i < observatories.Count - 2; i++)
         {
-            foreach (var observatory in _problem.Observatories)
+            for (int j = i + 1; j < observatories.Count - 1; j++)
             {
-                int numberOfObservatoriesWithinDistance = 0;
-                foreach (var observatoryForDistance in _problem.Observatories)
+                for (int k = j + 1; k < observatories.Count; k++)
                 {
-                    if (numberOfObservatoriesWithinDistance > 1)
-                    {
-                        break;
-                    }
+                    // Calculate the distances between the 3 Obervatories
+                    float distance1 = Vector3.Distance(observatories[i].Location, observatories[j].Location);
+                    float distance2 = Vector3.Distance(observatories[i].Location, observatories[k].Location);
+                    float distance3 = Vector3.Distance(observatories[j].Location, observatories[k].Location);
 
-                    if (observatory != observatoryForDistance)
+                    // Check if all distances are between the minDistance and maxDistance
+                    if (distance1 >= minDistance && distance1 <= maxDistance &&
+                        distance2 >= minDistance && distance2 <= maxDistance &&
+                        distance3 >= minDistance && distance3 <= maxDistance)
                     {
-                        float distanceBetweenObservatories =
-                            Vector3.Distance(observatory.Location, observatoryForDistance.Location);
-                        if (distanceBetweenObservatories > _minDistanceForTriangulation
-                            && distanceBetweenObservatories < _maxDistanceForTriangulation)
-                        {
-                            numberOfObservatoriesWithinDistance++;
-                        }
+                        return true;
                     }
-                }
-
-                if (numberOfObservatoriesWithinDistance < 2)
-                {
-                    observatory.IsInvalidPlacement = true;
                 }
             }
         }
+        return false;
+    }
+
+    private bool UseTriangulation()
+    {
+        return _minDistanceForTriangulation != 0f || !float.IsPositiveInfinity(_maxDistanceForTriangulation);
     }
     
     private void CalculateRewardMultipliers()
@@ -344,7 +347,7 @@ public class ObservatoryAgent : Agent
         float reward = 0;
         foreach (var index in indices)
         {
-            Dictionary<string, float> distinctObjectsSeen = new Dictionary<string, float>();
+            Dictionary<string, List<KeyValuePair<int, float>>> objectsSeen = new Dictionary<string, List<KeyValuePair<int, float>>>();
             List<ObservedObject> positions = _problem.Observations[index].GETObservedObjects();
             DateTime observationDate = _problem.Observations[index].GETObservationDate();
             SetObjectsToPosition(positions);
@@ -356,19 +359,24 @@ public class ObservatoryAgent : Agent
                     foreach (var observedObject in objectsInCone)
                     {
                         float observatoryMultiplier = observatory.GetOverallMultiplierForMonth(observationDate.Month);
-                        if (!distinctObjectsSeen.ContainsKey(observedObject)
-                            || _useRewardHeatmaps && distinctObjectsSeen[observedObject] < observatoryMultiplier)
+                        if (!objectsSeen.ContainsKey(observedObject))
                         {
-                            distinctObjectsSeen[observedObject] = observatoryMultiplier;
-                        } 
+                            objectsSeen[observedObject] = new List<KeyValuePair<int, float>>();
+                        }
+                        objectsSeen[observedObject].Add(new KeyValuePair<int, float>(_problem.Observatories.IndexOf(observatory), observatoryMultiplier));
                     }
                 }
             }
             
-            distinctObjectsSeen.Remove("earth");
-            foreach (var observedObject in distinctObjectsSeen)
+            objectsSeen.Remove("earth");
+            foreach (var observedObject in objectsSeen)
             {
-                reward += observedObject.Value * positions.Find(p => p.Name == observedObject.Key).Importance;
+                if (!UseTriangulation() || CheckIfObservatoriesWithinDistance(
+                    observedObject.Value.Select(pair => _problem.Observatories[pair.Key]).ToList(),
+                    _minDistanceForTriangulation, _maxDistanceForTriangulation))
+                {
+                    reward += observedObject.Value.Max(pair => pair.Value) * positions.Find(p => p.Name == observedObject.Key).Importance;
+                }
             }
         }
         return reward;
