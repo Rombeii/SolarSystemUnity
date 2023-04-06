@@ -20,6 +20,7 @@ public class ObservatoryAgent : Agent
     private Dictionary<int, List<int>> _fullWhiteCells;
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
     private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
+    private DistanceCache _distanceCache = new DistanceCache();
 
     private const float EarthRadius = 0.006371f;
     private const int NumberOfCols = 36;
@@ -215,6 +216,7 @@ public class ObservatoryAgent : Agent
         
         if (_problem.areAllObservatoriesOn())
         {
+            _distanceCache.ResetCache();
             CalculateRewardMultipliers();
             CalculateReward();
             EndEpisode();
@@ -262,9 +264,9 @@ public class ObservatoryAgent : Agent
                 for (int k = j + 1; k < observatories.Count; k++)
                 {
                     // Calculate the distances between the 3 Obervatories
-                    float distance1 = Vector3.Distance(observatories[i].Location, observatories[j].Location);
-                    float distance2 = Vector3.Distance(observatories[i].Location, observatories[k].Location);
-                    float distance3 = Vector3.Distance(observatories[j].Location, observatories[k].Location);
+                    float distance1 = _distanceCache.GetDistance(observatories[i], observatories[j]);
+                    float distance2 = _distanceCache.GetDistance(observatories[i], observatories[k]);
+                    float distance3 = _distanceCache.GetDistance(observatories[j], observatories[k]);
 
                     // Check if all distances are between the minDistance and maxDistance
                     if (distance1 >= minDistance && distance1 <= maxDistance &&
