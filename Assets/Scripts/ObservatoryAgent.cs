@@ -20,8 +20,7 @@ public class ObservatoryAgent : Agent
     private Dictionary<int, List<int>> _fullWhiteCells;
     private List<HeatmapWrapper> _yearlyRewardHeatmaps;
     private Dictionary<int, List<HeatmapWrapper>> _monthlyRewardHeatmaps;
-    private DistanceCache _distanceCache = new DistanceCache();
-
+    private DistanceCache _distanceCache;
     private const float EarthRadius = 0.006371f;
     private const int NumberOfCols = 36;
     private const int NumberOfRows = 18;
@@ -53,6 +52,7 @@ public class ObservatoryAgent : Agent
         CreatePointsInASphere();
         InitializeObservedObjectDict();
         InitializeHeatmaps();
+        _distanceCache = new DistanceCache(_problem.Observatories);
         ResetScene();
     }
 

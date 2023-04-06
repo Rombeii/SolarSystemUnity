@@ -1,64 +1,42 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace DefaultNamespace
 {
     public class DistanceCache
     {
-        private List<ObservatoryDistance> distances;
+        private float?[,] distances;
+        private List<Observatory> observatories;
 
-        public DistanceCache()
+        public DistanceCache(List<Observatory> obsList)
         {
-            ResetCache();
+            observatories = obsList;
+            distances = new float?[observatories.Count, observatories.Count];
         }
 
         public void ResetCache()
         {
-            distances = new List<ObservatoryDistance>();
+            distances = new float?[observatories.Count, observatories.Count];
         }
 
         public float GetDistance(Observatory obs1, Observatory obs2)
         {
-            ObservatoryDistance observatoryDistance = GetOrCreateObservatoryDistance(obs1, obs2);
-            return observatoryDistance.GetDistance();
-        }
+            int index1 = observatories.IndexOf(obs1);
+            int index2 = observatories.IndexOf(obs2);
 
-        private ObservatoryDistance GetOrCreateObservatoryDistance(Observatory obs1, Observatory obs2)
-        {
-            var existingObservatoryDistance = distances.FirstOrDefault(dist => dist.IsDistanceBetween(obs1, obs2));
-            if (existingObservatoryDistance != null)
+            float? distance = distances[index1, index2];
+
+            if (distance == null)
             {
-                return existingObservatoryDistance;
-            }
-            
-            var newObservatoryDistance = new ObservatoryDistance(obs1, obs2);
-            distances.Add(newObservatoryDistance);
-            return newObservatoryDistance;
-        }
-
-        private class ObservatoryDistance
-        {
-            private readonly Observatory observatory1;
-            private readonly Observatory observatory2;
-            private readonly float distance;
-
-            public ObservatoryDistance(Observatory obs1, Observatory obs2)
-            {
-                observatory1 = obs1;
-                observatory2 = obs2;
-                distance = Vector3.Distance(obs1.Location, obs2.Location);
+                Vector3 loc1 = obs1.Location;
+                Vector3 loc2 = obs2.Location;
+                float dist = Vector3.Distance(loc1, loc2);
+                distances[index1, index2] = dist;
+                distances[index2, index1] = dist;
+                distance = dist;
             }
 
-            public bool IsDistanceBetween(Observatory obs1, Observatory obs2)
-            {
-                return (observatory1 == obs1 && observatory2 == obs2) || (observatory1 == obs2 && observatory2 == obs1);
-            }
-
-            public float GetDistance()
-            {
-                return distance;
-            }
+            return (float)distance;
         }
     }
 }
